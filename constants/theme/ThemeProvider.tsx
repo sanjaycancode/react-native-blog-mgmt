@@ -22,7 +22,7 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemColorScheme = useColorScheme();
-  const [manualMode, setManualMode] = useState<ThemeMode>('system');
+  const [manualMode, setManualMode] = useState<ThemeMode>('light');
 
   const resolvedMode = manualMode === 'system' ? (systemColorScheme ?? 'light') : manualMode;
   const isDark = resolvedMode === 'dark';

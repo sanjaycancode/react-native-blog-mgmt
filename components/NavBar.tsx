@@ -1,36 +1,42 @@
 import React, { useState } from "react";
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+
+import { useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 
-import { useTheme } from "../constants/theme";
+import { useTheme } from "@/constants/theme";
 
 import Button from "./ThemedButton";
 
-interface NavbarProps {
-  onNavigate?: (route: string) => void;
-  activeRoute?: string;
-}
+const BLOG_BASE_URL = "https://blog-ncc19.vercel.app";
 
-export function Navbar({ onNavigate, activeRoute = "home" }: NavbarProps) {
+export function Navbar() {
   const { colors, typography, spacing, isDark, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
 
-  const navItems = [
-    { id: "home", label: "Home" },
-    { id: "explore", label: "Explore" },
-    { id: "write", label: "Write" },
-  ];
-
-  const handleNav = (id: string) => {
+  const openWebsite = async (path: string) => {
     setIsOpen(false);
-    onNavigate?.(id);
+
+    try {
+      await Linking.openURL(`${BLOG_BASE_URL}${path}`);
+    } catch {
+      Alert.alert(
+        "Unable to open page",
+        "Please check your connection and try again.",
+      );
+    }
+  };
+
+  const goToLogin = () => {
+    setIsOpen(false);
+    router.push("/login");
+  };
+
+  const goToHome = () => {
+    setIsOpen(false);
+    router.replace("/");
   };
 
   return (
@@ -49,8 +55,8 @@ export function Navbar({ onNavigate, activeRoute = "home" }: NavbarProps) {
           { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
         ]}
       >
-        <Pressable onPress={() => handleNav("home")} style={styles.brand}>
-          <View style={[styles.logoIcon]}>
+        <Pressable onPress={goToHome} style={styles.brand} accessibilityRole="link">
+          <View style={styles.logoIcon}>
             <Image
               source={require("../assets/images/logo.png")}
               style={styles.logoImage}
@@ -77,7 +83,8 @@ export function Navbar({ onNavigate, activeRoute = "home" }: NavbarProps) {
                 opacity: pressed ? 0.7 : 1,
               },
             ]}
-            accessibilityLabel="Toggle Theme"
+            accessibilityRole="button"
+            accessibilityLabel="Toggle theme"
           >
             <Ionicons
               name={isDark ? "sunny-outline" : "moon-outline"}
@@ -87,7 +94,7 @@ export function Navbar({ onNavigate, activeRoute = "home" }: NavbarProps) {
           </Pressable>
 
           <Pressable
-            onPress={() => setIsOpen(!isOpen)}
+            onPress={() => setIsOpen((open) => !open)}
             style={({ pressed }) => [
               styles.iconBtn,
               {
@@ -96,7 +103,9 @@ export function Navbar({ onNavigate, activeRoute = "home" }: NavbarProps) {
                 opacity: pressed ? 0.7 : 1,
               },
             ]}
-            accessibilityLabel="Toggle Navigation Menu"
+            accessibilityRole="button"
+            accessibilityLabel={isOpen ? "Close navigation menu" : "Open navigation menu"}
+            accessibilityState={{ expanded: isOpen }}
           >
             <Ionicons
               name={isOpen ? "close" : "menu"}
@@ -107,7 +116,7 @@ export function Navbar({ onNavigate, activeRoute = "home" }: NavbarProps) {
         </View>
       </View>
 
-      {isOpen && (
+      {isOpen ? (
         <View
           style={[
             styles.menuDropdown,
@@ -118,40 +127,72 @@ export function Navbar({ onNavigate, activeRoute = "home" }: NavbarProps) {
             },
           ]}
         >
-          {navItems.map((item) => {
-            const isActive = activeRoute === item.id;
-            return (
-              <Pressable
-                key={item.id}
-                onPress={() => handleNav(item.id)}
-                style={({ pressed }) => [
-                  styles.menuItem,
-                  {
-                    backgroundColor: isActive
-                      ? colors.muted
-                      : pressed
-                        ? colors.muted
-                        : "transparent",
-                    paddingVertical: spacing.md,
-                    paddingHorizontal: spacing.md,
-                    borderRadius: 8,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    color: isActive ? colors.primary : colors.foreground,
-                    fontSize: typography.sizes.base,
-                    fontWeight: isActive
-                      ? typography.weights.bold
-                      : typography.weights.medium,
-                  }}
-                >
-                  {item.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+          <Pressable
+            onPress={goToHome}
+            style={({ pressed }) => [
+              styles.menuItem,
+              {
+                backgroundColor: pressed ? colors.muted : "transparent",
+                paddingVertical: spacing.md,
+                paddingHorizontal: spacing.md,
+                borderRadius: 8,
+              },
+            ]}
+          >
+            <Text
+              style={{
+                color: colors.primary,
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.bold,
+              }}
+            >
+              Home
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void openWebsite("/blogs")}
+            style={({ pressed }) => [
+              styles.menuItem,
+              {
+                backgroundColor: pressed ? colors.muted : "transparent",
+                paddingVertical: spacing.md,
+                paddingHorizontal: spacing.md,
+                borderRadius: 8,
+              },
+            ]}
+          >
+            <Text
+              style={{
+                color: colors.foreground,
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.medium,
+              }}
+            >
+              Explore
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void openWebsite("/register")}
+            style={({ pressed }) => [
+              styles.menuItem,
+              {
+                backgroundColor: pressed ? colors.muted : "transparent",
+                paddingVertical: spacing.md,
+                paddingHorizontal: spacing.md,
+                borderRadius: 8,
+              },
+            ]}
+          >
+            <Text
+              style={{
+                color: colors.foreground,
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.medium,
+              }}
+            >
+              Write
+            </Text>
+          </Pressable>
 
           <View
             style={[
@@ -164,11 +205,15 @@ export function Navbar({ onNavigate, activeRoute = "home" }: NavbarProps) {
               },
             ]}
           >
-            <Button title="Login" variant="outlined" onPress={() => handleNav("login")} />
-            <Button title="Get Started" variant="filled" onPress={() => handleNav("register")} />
+            <Button title="Login" variant="outlined" onPress={goToLogin} />
+            <Button
+              title="Get Started"
+              variant="filled"
+              onPress={() => void openWebsite("/register")}
+            />
           </View>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -222,8 +267,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   logoImage: {
-    width: 20,
-    height: 20,
+    width: 24,
+    height: 24,
   },
 });
 

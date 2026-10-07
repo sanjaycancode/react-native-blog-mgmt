@@ -1,87 +1,96 @@
-import React, { useState } from "react";
-import { Pressable,ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import BlogCard from "../components/BlogCard";
-import Footer from "../components/Footer"
-import Button from "../components/ThemedButton";
-import Card from "../components/ThemedCard";
-import { useTheme } from "../constants/theme";
-import Navbar from "../components/NavBar";
+import BlogCard from "@/components/BlogCard";
+import Footer from "@/components/Footer";
+import Navbar from "@/components/NavBar";
+import Button from "@/components/ThemedButton";
+import Card from "@/components/ThemedCard";
 
-export interface BlogItem {
-  id: string;
-  title: string;
-  excerpt: string;
-  author: string;
-  date: string;
-  category: string;
-  readTime: string;
-  isFeatured?: boolean;
-}
-const SAMPLE_BLOGS: BlogItem[] = [
-  {
-    id: "1",
-    title: "Building Modern Web and Mobile Apps with Seamless Architecture",
-    excerpt:
-      "Explore how modern fullstack patterns simplify cross-platform development while maintaining high performance and clarity.",
-    author: "Aarav Sharma",
-    date: "Oct 4, 2026",
-    category: "Technology",
-    readTime: "5 min read",
-    isFeatured: true,
-  },
-  {
-    id: "2",
-    title: "A Trekker’s Guide to the Hidden Trails of Annapurna",
-    excerpt:
-      "Beyond the mainstream routes lies an untouched realm of stunning landscapes, peaceful tea houses, and hospitable locals.",
-    author: "Pooja Thapa",
-    date: "Oct 2, 2026",
-    category: "Travel & Culture",
-    readTime: "7 min read",
-  },
-  {
-    id: "3",
-    title: "The Art of Slow Living in Kathmandu’s Bustling Corners",
-    excerpt:
-      "Finding mindful moments, morning chiya culture, and quiet heritage courtyards amidst city life.",
-    author: "Bikash Karki",
-    date: "Sep 29, 2026",
-    category: "Life & Thoughts",
-    readTime: "4 min read",
-  },
-];
+import { blogApi } from "@/api/services";
+import { categoryApi } from "@/api/services/category";
 
-const CATEGORIES = [
-  "All",
-  "Technology",
-  "Travel & Culture",
-  "Life & Thoughts",
-  "Startups",
-  "Design",
-];
+import { useTheme } from "@/constants/theme";
 
-interface HomeScreenProps {
-  onNavigate?: (route: string) => void;
-}
+import { getErrorMessage } from "@/utils/errorMessage";
 
-export function HomeScreen({ onNavigate }: HomeScreenProps) {
+import type { Blog, Category } from "@/types";
+
+const BLOG_BASE_URL = "http://localhost:8081/";
+
+export default function HomeScreen() {
   const { colors, typography, spacing, radii } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isBlogsLoading, setIsBlogsLoading] = useState(true);
+  const [blogsError, setBlogsError] = useState<string | null>(null);
 
+  const openWebsite = useCallback(async (path: string) => {
+    try {
+      await Linking.openURL(`${BLOG_BASE_URL}${path}`);
+    } catch {
+      Alert.alert(
+        "Unable to open page",
+        "Please check your connection and try again.",
+      );
+    }
+  }, []);
+
+  const findBlogs = useCallback(async () => {
+    setIsBlogsLoading(true);
+    setBlogsError(null);
+    const [blogsResult, categoriesResult] = await Promise.allSettled([
+      blogApi.list({ page: 1, limit: 6 }),
+      categoryApi.list(),
+    ]);
+
+    if (blogsResult.status === "fulfilled") {
+      setBlogs(blogsResult.value.data.result);
+    } else {
+      setBlogsError(getErrorMessage(blogsResult.reason));
+    }
+
+    if (categoriesResult.status === "fulfilled") {
+      setCategories(categoriesResult.value.data.result);
+    } else {
+      console.error("Failed to fetch blog categories:", categoriesResult.reason);
+    }
+
+    setIsBlogsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void findBlogs();
+  }, [findBlogs]);
+
+  const categoryOptions = [
+    "All",
+    ...categories.map((category) => category.title),
+  ];
   const filteredBlogs =
     selectedCategory === "All"
-      ? SAMPLE_BLOGS
-      : SAMPLE_BLOGS.filter((b) => b.category === selectedCategory);
+      ? blogs
+      : blogs.filter((blog) => blog.category?.title === selectedCategory);
 
   return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-    <Navbar
-      onNavigate={onNavigate}
-      activeRoute="home"
-    />
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
+    <Navbar />
 
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -143,91 +152,18 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         >
           <Button title="Browse Blogs"
             variant="filled"
-            onPress={() => onNavigate?.("explore")}
+            onPress={() => void openWebsite("/blogs")}
             style={styles.heroButton}
           />
           <Button title="Join the community"
             variant="outlined"
-            onPress={() => onNavigate?.("register")}
+            onPress={() => void openWebsite("/register")}
             style={styles.heroButton}
           />
         </View>
 
-        {/* Hero Featured Card */}
-        <Card
-          style={[
-            styles.heroCard,
-            {
-              marginTop: spacing["2xl"],
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          <View
-            style={[
-              styles.heroCircle,
-              {
-                backgroundColor: colors.heroCircle,
-              },
-            ]}
-          />
-          <Text
-            style={[
-              styles.eyebrow,
-              {
-                color: colors.primary,
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.bold,
-              },
-            ]}
-          >
-            FEATURED THIS WEEK
-          </Text>
-          <Text
-            style={[
-              styles.heroCardTitle,
-              {
-                color: colors.foreground,
-                fontSize: typography.sizes.xl,
-                fontWeight: typography.weights.bold,
-                marginTop: spacing.sm,
-              },
-            ]}
-          >
-            Write your Blog
-          </Text>
-          <Text
-            style={[
-              styles.heroCardDescription,
-              {
-                color: colors.mutedForeground,
-                fontSize: typography.sizes.sm,
-                lineHeight: 20,
-                marginTop: spacing.xs,
-              },
-            ]}
-          >
-            Get started with writing your stories; stories remain alive for
-            generations.
-          </Text>
 
-          <Pressable
-            onPress={() => onNavigate?.("write")}
-            style={[styles.linkRow, { marginTop: spacing.md }]}
-          >
-            <Text
-              style={{
-                color: colors.primary,
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.semibold,
-              }}
-            >
-              Start writing now
-            </Text>
-            <Ionicons name="arrow-forward" size={16} color={colors.primary} />
-          </Pressable>
-        </Card>
+    
       </View>
 
       {/* Category Filter Chips */}
@@ -240,7 +176,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
             { paddingHorizontal: spacing.xl },
           ]}
         >
-          {CATEGORIES.map((cat) => {
+          {categoryOptions.map((cat) => {
             const isSelected = selectedCategory === cat;
             return (
               <Pressable
@@ -314,7 +250,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           </View>
 
           <Pressable
-            onPress={() => onNavigate?.("explore")}
+            onPress={() => void openWebsite("/blogs")}
             style={styles.linkRow}
           >
             <Text
@@ -332,13 +268,45 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 
         {/* Story List */}
         <View style={{ marginTop: spacing.lg }}>
-          {filteredBlogs.map((blog) => (
-            <BlogCard
-              key={blog.id}
-              blog={blog}
-              onPress={() => onNavigate?.("explore")}
-            />
-          ))}
+          {isBlogsLoading ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : blogsError ? (
+            <Text
+              style={{
+                color: colors.mutedForeground,
+                fontSize: typography.sizes.sm,
+              }}
+            >
+              Could not load stories: {blogsError}
+            </Text>
+          ) : filteredBlogs.length > 0 ? (
+            filteredBlogs.map((blog) => (
+              <BlogCard
+                key={blog._id}
+                blog={{
+                  id: blog._id,
+                  title: blog.title,
+                  excerpt: blog.description,
+                  author:
+                    blog.author.name ?? blog.author.email ?? "Nepal Can writer",
+                  date: new Date(blog.createdAt).toLocaleDateString(),
+                  category: blog.category?.title ?? "Uncategorized",
+                  readTime: "Read story",
+                  isFeatured: blog.status === "featured",
+                }}
+                onPress={() => void openWebsite(`/blogs/${blog.slug}`)}
+              />
+            ))
+          ) : (
+            <Text
+              style={{
+                color: colors.mutedForeground,
+                fontSize: typography.sizes.sm,
+              }}
+            >
+              No stories found in this category.
+            </Text>
+          )}
         </View>
       </View>
 
@@ -377,7 +345,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           </Text>
           <Button title = "Create Your Post"
             variant="filled"
-            onPress={() => onNavigate?.("write")}
+            onPress={() => void openWebsite("/register")}
             style={{ width: "100%" }}
           />
         </Card>
@@ -385,7 +353,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 
       <Footer />
     </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -448,4 +416,3 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
 });
-export default HomeScreen;
