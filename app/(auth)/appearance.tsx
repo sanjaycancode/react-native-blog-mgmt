@@ -7,12 +7,11 @@ import { ThemedCard } from "@/components/ThemedCard";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
 import { ThemedText } from "@/components/ThemedText";
 
-import { useTheme, useThemeMode } from "@/context/ThemeContext";
+import { useTheme } from "@/constants/theme";
 
 export default function AppearanceScreen() {
-  const { theme } = useTheme();
+  const theme = useTheme();
   const styles = createStyles(theme);
-  const { mode, setTheme } = useThemeMode();
   const router = useRouter();
 
   return (
@@ -23,20 +22,25 @@ export default function AppearanceScreen() {
           <View style={styles.header}>
             <ThemedText variant="heading2">Appearance</ThemedText>
             <ThemedText variant="body" semantic="muted">
-              Current mode: {mode}
+              Current mode: {theme.mode}
             </ThemedText>
           </View>
 
           <ThemedCard style={styles.card}>
             <ThemedButton
               title="Light"
-              variant={mode === "light" ? "filled" : "outlined"}
-              onPress={() => setTheme("light")}
+              variant={theme.mode === "light" ? "filled" : "outlined"}
+              onPress={() => theme.setMode("light")}
             />
             <ThemedButton
               title="Dark"
-              variant={mode === "dark" ? "filled" : "outlined"}
-              onPress={() => setTheme("dark")}
+              variant={theme.mode === "dark" ? "filled" : "outlined"}
+              onPress={() => theme.setMode("dark")}
+            />
+            <ThemedButton
+              title="System"
+              variant={theme.mode === "system" ? "filled" : "outlined"}
+              onPress={() => theme.setMode("system")}
             />
           </ThemedCard>
           <ThemedButton
@@ -54,7 +58,7 @@ export default function AppearanceScreen() {
   );
 }
 
-const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
+const createStyles = (theme: ReturnType<typeof useTheme>) =>
   StyleSheet.create({
     container: {
       flexGrow: 1,

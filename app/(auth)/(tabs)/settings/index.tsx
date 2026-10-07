@@ -7,13 +7,13 @@ import { ThemedCard } from "@/components/ThemedCard";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
 import { ThemedText } from "@/components/ThemedText";
 
+import { useTheme } from "@/constants/theme";
+
 import { useAuth } from "@/context/AuthContext";
-import { useTheme, useThemeMode } from "@/context/ThemeContext";
 
 export default function SettingsScreen() {
-  const { theme } = useTheme();
+  const theme = useTheme();
   const styles = createStyles(theme);
-  const { mode } = useThemeMode();
   const { logout } = useAuth();
   const router = useRouter();
 
@@ -30,7 +30,7 @@ export default function SettingsScreen() {
         <ThemedCard style={styles.card}>
           <ThemedText variant="heading6">Appearance</ThemedText>
           <ThemedText variant="bodySmall" semantic="muted">
-            Current mode: {mode}
+            Current mode: {theme.mode}
           </ThemedText>
           <ThemedButton
             title="Choose appearance"
@@ -49,7 +49,7 @@ export default function SettingsScreen() {
   );
 }
 
-const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
+const createStyles = (theme: ReturnType<typeof useTheme>) =>
   StyleSheet.create({
     container: {
       flexGrow: 1,

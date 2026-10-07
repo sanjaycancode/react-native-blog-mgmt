@@ -5,11 +5,11 @@ import { Link, Stack, usePathname } from "expo-router";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
 import { ThemedText } from "@/components/ThemedText";
 
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/constants/theme";
 
 export default function NotFoundScreen() {
   const pathname = usePathname();
-  const { theme } = useTheme();
+  const theme = useTheme();
   const styles = createStyles(theme);
 
   return (
@@ -33,7 +33,7 @@ export default function NotFoundScreen() {
   );
 }
 
-const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
+const createStyles = (theme: ReturnType<typeof useTheme>) =>
   StyleSheet.create({
     container: {
       flex: 1,

@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useThemeColors } from "@/context/ThemeContext";
+import { useTheme } from "@/constants/theme";
 
 type ThemedSafeAreaViewProps = {
   children: React.ReactNode;
@@ -14,14 +14,12 @@ export function ThemedSafeAreaView({
   style,
   ...safeAreaProps
 }: ThemedSafeAreaViewProps) {
-  const colors = useThemeColors();
-
-  const styles = createStyle(colors);
+  const { colors } = useTheme();
 
   return (
     <SafeAreaView
       {...safeAreaProps}
-      style={[styles.container, style]}
+      style={[styles.container, { backgroundColor: colors.background }, style]}
       edges={safeAreaProps.edges ?? ["top", "left", "right"]}
     >
       {children}
@@ -29,10 +27,8 @@ export function ThemedSafeAreaView({
   );
 }
 
-const createStyle = (colors: ReturnType<typeof useThemeColors>) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-  });
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

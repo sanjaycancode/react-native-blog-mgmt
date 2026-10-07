@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/constants/theme";
 
 type InputTone =
   | "primary"
@@ -46,14 +46,14 @@ export interface ThemedTextInputProps extends TextInputProps {
 
 const TONE_TO_COLOR_KEY: Record<
   InputTone,
-  "primary" | "success" | "error" | "warning" | "info" | "textSecondary"
+  "primary" | "accent" | "mutedForeground"
 > = {
-  default: "textSecondary",
+  default: "mutedForeground",
   primary: "primary",
-  success: "success",
-  error: "error",
-  warning: "warning",
-  info: "info",
+  success: "accent",
+  error: "primary",
+  warning: "accent",
+  info: "primary",
 };
 
 function withAlpha(hexColor: string, alphaHex: string) {
@@ -90,7 +90,7 @@ export function ThemedTextInput({
   style,
   ...props
 }: ThemedTextInputProps) {
-  const { theme } = useTheme();
+  const theme = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   const isReadOnly = readOnly && !disabled;
@@ -143,26 +143,26 @@ export function ThemedTextInput({
   const showPasswordToggle = !!secureTextEntry && !endIcon;
 
   const borderColor = error
-    ? theme.colors.error
+    ? theme.colors.primary
     : !canEdit
-      ? theme.colors.disabled
+      ? theme.colors.muted
       : isFocused
         ? activeColor
         : theme.colors.border;
 
   const backgroundColor = !canEdit
-    ? withAlpha(theme.colors.disabled, "1F")
+    ? withAlpha(theme.colors.muted, "1F")
     : variant === "accent"
       ? withAlpha(activeColor, "1A")
-      : theme.colors.backgroundAlt;
+      : theme.colors.card;
 
   const labelColor = error
-    ? theme.colors.error
+    ? theme.colors.primary
     : !canEdit
-      ? theme.colors.disabled
+      ? theme.colors.mutedForeground
       : isFocused
         ? activeColor
-        : theme.colors.textSecondary;
+        : theme.colors.mutedForeground;
 
   const labelAnimatedStyle = {
     top: animatedValue.interpolate({
@@ -172,8 +172,8 @@ export function ThemedTextInput({
     fontSize: animatedValue.interpolate({
       inputRange: [0, 1],
       outputRange: [
-        theme.typography.bodySmall.fontSize,
-        theme.typography.caption.fontSize,
+        theme.typography.sizes.sm,
+        theme.typography.sizes.xs,
       ],
     }),
   };
@@ -185,8 +185,8 @@ export function ThemedTextInput({
       }
 
       const iconColor = !canEdit
-        ? theme.colors.disabled
-        : theme.colors.textSecondary;
+        ? theme.colors.muted
+        : theme.colors.mutedForeground;
       const element = React.cloneElement(
         icon as React.ReactElement<{ color?: string }>,
         {
@@ -204,8 +204,8 @@ export function ThemedTextInput({
       canEdit,
       styles.endIcon,
       styles.startIcon,
-      theme.colors.disabled,
-      theme.colors.textSecondary,
+      theme.colors.muted,
+      theme.colors.mutedForeground,
     ],
   );
 
@@ -235,7 +235,7 @@ export function ThemedTextInput({
             name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
             size={18}
             color={
-              !canEdit ? theme.colors.disabled : theme.colors.textSecondary
+              !canEdit ? theme.colors.muted : theme.colors.mutedForeground
             }
           />
         </TouchableOpacity>
@@ -266,7 +266,7 @@ export function ThemedTextInput({
                 backgroundColor:
                   variant === "accent"
                     ? "transparent"
-                    : theme.colors.backgroundAlt,
+                    : theme.colors.card,
               },
               !!startIcon && styles.labelWithStartIcon,
             ]}
@@ -300,7 +300,7 @@ export function ThemedTextInput({
           placeholder={
             isFocused ? placeholder : label ? undefined : placeholder
           }
-          placeholderTextColor={theme.colors.textTertiary}
+          placeholderTextColor={theme.colors.mutedForeground}
           secureTextEntry={!!secureTextEntry && !isPasswordVisible}
           cursorColor={activeColor}
           selectionColor={withAlpha(activeColor, "99")}
@@ -344,7 +344,7 @@ const inputSizeStyleMap: Record<
   lg: "inputLg",
 };
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     fullWidth: {
       width: "100%",
@@ -353,8 +353,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flexDirection: "row",
       alignItems: "center",
       borderWidth: 1,
-      borderRadius: theme.borderRadius.medium,
-      backgroundColor: theme.colors.backgroundAlt,
+      borderRadius: theme.radii.md,
+      backgroundColor: theme.colors.card,
     },
     containerAccent: {
       borderWidth: 0,
@@ -378,20 +378,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     input: {
       flex: 1,
       height: "100%",
-      color: theme.colors.text,
+      color: theme.colors.foreground,
       paddingVertical: 0,
     },
     inputXs: {
-      fontSize: theme.typography.caption.fontSize,
+      fontSize: theme.typography.sizes.xs,
     },
     inputSm: {
-      fontSize: theme.typography.bodySmall.fontSize,
+      fontSize: theme.typography.sizes.sm,
     },
     inputMd: {
-      fontSize: theme.typography.body.fontSize,
+      fontSize: theme.typography.sizes.base,
     },
     inputLg: {
-      fontSize: theme.typography.heading6.fontSize,
+      fontSize: theme.typography.sizes.base,
     },
     multilineInput: {
       minHeight: 88,
@@ -409,8 +409,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       left: 34,
     },
     requiredMark: {
-      fontSize: theme.typography.caption.fontSize,
-      lineHeight: theme.typography.caption.lineHeight,
+      fontSize: theme.typography.sizes.xs,
+      lineHeight:
+        theme.typography.sizes.xs * theme.typography.lineHeights.normal,
     },
     startIcon: {
       marginRight: theme.spacing.sm,
@@ -425,7 +426,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       justifyContent: "center",
     },
     disabledInput: {
-      color: theme.colors.disabled,
+      color: theme.colors.mutedForeground,
     },
     helperContainer: {
       marginTop: theme.spacing.sm,

@@ -1,7 +1,3 @@
-/**
- * Theme-aware button component
- */
-
 import React from "react";
 import {
   ActivityIndicator,
@@ -15,7 +11,7 @@ import {
 
 import { ThemedText } from "@/components/ThemedText";
 
-import { useTheme, useThemeColors } from "@/context/ThemeContext";
+import { useTheme } from "@/constants/theme";
 
 type ThemedButtonVariant = "filled" | "outlined" | "accent" | "text";
 type ThemedButtonColor = "primary" | "success" | "danger" | "default";
@@ -52,19 +48,21 @@ export function ThemedButton({
   textStyle,
   ...pressableProps
 }: ThemedButtonProps) {
-  const { theme } = useTheme();
-  const colors = useThemeColors();
+  const theme = useTheme();
   const isDisabled = Boolean(disabled);
-  const styles = createStyles(theme, colors, variant, color, size, isDisabled);
+  const styles = createStyles(theme, variant, color, size, isDisabled);
   const labelVariant = getLabelVariant(size);
   const iconColor = styles.text.color;
 
   const renderLabel = () => {
     if (loading && !loadingText) return null;
-    const _label = loading ? loadingText : title;
     return (
-      <ThemedText variant={labelVariant} style={[styles.text, textStyle]}>
-        {_label}
+      <ThemedText
+        variant={labelVariant}
+        style={[styles.text, textStyle]}
+        semantic="default"
+      >
+        {loading ? loadingText : title}
       </ThemedText>
     );
   };
@@ -83,19 +81,17 @@ export function ThemedButton({
     }
 
     const IconComponent = icon;
-
     return <IconComponent size={iconSize} color={iconColor} />;
   };
 
   return (
     <Pressable
+      {...pressableProps}
       disabled={isDisabled || loading}
       accessibilityState={{
+        ...pressableProps.accessibilityState,
         busy: loading,
         disabled: isDisabled || loading,
-        selected: pressableProps.accessibilityState?.selected,
-        checked: pressableProps.accessibilityState?.checked,
-        expanded: pressableProps.accessibilityState?.expanded,
       }}
       style={({ pressed }) => [
         fullWidth && styles.fullWidth,
@@ -103,7 +99,6 @@ export function ThemedButton({
         { opacity: pressed && !isDisabled && !loading ? 0.8 : 1 },
         style,
       ]}
-      {...pressableProps}
     >
       {loading ? (
         <>
@@ -122,44 +117,15 @@ export function ThemedButton({
 }
 
 function getLabelVariant(size: NonNullable<ThemedButtonProps["size"]>) {
-  switch (size) {
-    case "small":
-      return "bodySmall";
-    case "large":
-      return "heading6";
-    case "medium":
-    default:
-      return "body";
-  }
+  if (size === "small") return "bodySmall";
+  if (size === "large") return "heading6";
+  return "body";
 }
 
 function getIconSize(size: NonNullable<ThemedButtonProps["size"]>) {
-  switch (size) {
-    case "small":
-      return 14;
-    case "large":
-      return 18;
-    case "medium":
-    default:
-      return 16;
-  }
-}
-
-function getColorValue(
-  colors: ReturnType<typeof useThemeColors>,
-  color: ThemedButtonColor,
-) {
-  switch (color) {
-    case "success":
-      return colors.success;
-    case "danger":
-      return colors.error;
-    case "default":
-      return colors.text;
-    case "primary":
-    default:
-      return colors.primary;
-  }
+  if (size === "small") return 14;
+  if (size === "large") return 18;
+  return 16;
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -171,7 +137,6 @@ function hexToRgba(hex: string, alpha: number) {
           .map((char) => `${char}${char}`)
           .join("")
       : normalizedHex;
-
   const red = Number.parseInt(expandedHex.slice(0, 2), 16);
   const green = Number.parseInt(expandedHex.slice(2, 4), 16);
   const blue = Number.parseInt(expandedHex.slice(4, 6), 16);
@@ -180,88 +145,64 @@ function hexToRgba(hex: string, alpha: number) {
 }
 
 const createStyles = (
-  theme: ReturnType<typeof useTheme>["theme"],
-  colors: ReturnType<typeof useThemeColors>,
+  theme: ReturnType<typeof useTheme>,
   variant: ThemedButtonVariant,
   color: ThemedButtonColor,
   size: NonNullable<ThemedButtonProps["size"]>,
   disabled: boolean,
 ) => {
-  const resolvedColor = getColorValue(colors, color);
-
-  const getBackgroundColor = () => {
-    if (disabled) return colors.disabled;
-
-    switch (variant) {
-      case "outlined":
-      case "text":
-        return "transparent";
-      case "accent":
-        return hexToRgba(resolvedColor, theme.mode === "dark" ? 0.24 : 0.14);
-      case "filled":
-      default:
-        return resolvedColor;
-    }
-  };
-
-  const getBorderColor = () => {
-    if (disabled) return colors.disabled;
-    if (variant === "outlined") return resolvedColor;
-    return "transparent";
-  };
-
-  const getTextColor = () => {
-    if (disabled) return colors.textTertiary;
-
-    switch (variant) {
-      case "filled":
-        return colors.textOnPrimary;
-      case "outlined":
-      case "accent":
-      case "text":
-      default:
-        return resolvedColor;
-    }
-  };
-
-  const getPadding = () => {
-    switch (size) {
-      case "small":
-        return {
-          paddingVertical: theme.spacing.sm,
-          paddingHorizontal: theme.spacing.md,
-        };
-      case "large":
-        return {
-          paddingVertical: theme.spacing.lg,
-          paddingHorizontal: theme.spacing.xl,
-        };
-      case "medium":
-      default:
-        return {
-          paddingVertical: theme.spacing.md,
-          paddingHorizontal: theme.spacing.lg,
-        };
-    }
-  };
+  const resolvedColor =
+    color === "danger"
+      ? theme.colors.primary
+      : color === "success"
+        ? theme.colors.primary
+        : color === "default"
+          ? theme.colors.foreground
+          : theme.colors.primary;
+  const backgroundColor = disabled
+    ? theme.colors.muted
+    : variant === "filled"
+      ? resolvedColor
+      : variant === "accent"
+        ? hexToRgba(resolvedColor, theme.isDark ? 0.24 : 0.14)
+        : "transparent";
+  const textColor = disabled
+    ? theme.colors.mutedForeground
+    : variant === "filled"
+      ? theme.colors.primaryForeground
+      : resolvedColor;
+  const padding =
+    size === "small"
+      ? { paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md }
+      : size === "large"
+        ? {
+            paddingVertical: theme.spacing.lg,
+            paddingHorizontal: theme.spacing["2xl"],
+          }
+        : {
+            paddingVertical: theme.spacing.md,
+            paddingHorizontal: theme.spacing.lg,
+          };
 
   return StyleSheet.create({
     button: {
       flexDirection: "row",
-      borderRadius: theme.borderRadius.medium,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: getBackgroundColor(),
-      borderWidth: variant === "outlined" ? 1 : 0,
-      borderColor: getBorderColor(),
       gap: theme.spacing.sm,
-      ...getPadding(),
+      borderRadius: theme.radii.md,
+      borderWidth: variant === "outlined" ? 1 : 0,
+      borderColor: disabled ? theme.colors.border : resolvedColor,
+      backgroundColor,
+      ...padding,
     },
     fullWidth: {
       alignSelf: "stretch",
     },
     text: {
-      color: getTextColor(),
+      color: textColor,
     },
   });
 };
+
+export default ThemedButton;

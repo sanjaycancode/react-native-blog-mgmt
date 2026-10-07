@@ -9,8 +9,9 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { ThemeProvider, useTheme } from "@/constants/theme";
+
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 
 import { ReactQueryProvider } from "@/lib/react-query/ReactQueryProvider";
 
@@ -38,7 +39,7 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { theme } = useTheme();
+  const { isDark } = useTheme();
   const { isInitializing } = useAuth();
 
   useEffect(() => {
@@ -49,7 +50,7 @@ function RootNavigator() {
 
   return (
     <>
-      <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Stack screenOptions={{ headerShown: false }} />
     </>
   );

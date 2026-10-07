@@ -6,7 +6,7 @@ import type { ComponentProps } from "react";
 
 import { ThemedText } from "@/components/ThemedText";
 
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/constants/theme";
 
 type IconName = ComponentProps<typeof FontAwesome>["name"];
 
@@ -27,7 +27,7 @@ export function TabBarButton({
 }: TabBarButtonProps) {
   const pressableProps: BaseTabBarButtonProps = buttonProps;
 
-  const { theme } = useTheme();
+  const theme = useTheme();
   const [isPressed, setIsPressed] = useState(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -35,7 +35,7 @@ export function TabBarButton({
   const focused =
     pressableProps.accessibilityState?.selected === true ||
     pressableProps["aria-selected"] === true;
-  const color = focused ? theme.colors.primary : theme.colors.tabIconDefault;
+  const color = focused ? theme.colors.primary : theme.colors.mutedForeground;
 
   return (
     <Pressable
@@ -57,14 +57,14 @@ export function TabBarButton({
   );
 }
 
-const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
+const createStyles = (theme: ReturnType<typeof useTheme>) =>
   StyleSheet.create({
     button: {
       flex: 1,
     },
     buttonPressed: {
-      backgroundColor: theme.colors.primaryLight + "20",
-      borderRadius: theme.borderRadius.medium,
+      backgroundColor: theme.colors.muted,
+      borderRadius: theme.radii.md,
     },
     content: {
       alignItems: "center",
@@ -74,8 +74,8 @@ const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
     iconBox: {
       alignItems: "center",
       justifyContent: "center",
-      width: theme.spacing.xl + theme.spacing.md,
-      height: theme.spacing.xl + theme.spacing.md,
-      borderRadius: theme.borderRadius.small,
+      width: theme.spacing["2xl"] + theme.spacing.md,
+      height: theme.spacing["2xl"] + theme.spacing.md,
+      borderRadius: theme.radii.sm,
     },
   });

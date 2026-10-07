@@ -2,15 +2,15 @@ import { ScrollView, StyleSheet, View } from "react-native";
 
 import { useRouter } from "expo-router";
 
-import { ThemedButton } from "@/components/ThemedButton";
-import { ThemedCard } from "@/components/ThemedCard";
+import ThemedButton from "@/components/ThemedButton";
+import ThemedCard from "@/components/ThemedCard";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
 import { ThemedText } from "@/components/ThemedText";
 
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/constants/theme";
 
 export default function HomeScreen() {
-  const { theme } = useTheme();
+  const theme = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
 
@@ -45,7 +45,7 @@ export default function HomeScreen() {
   );
 }
 
-const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
+const createStyles = (theme: ReturnType<typeof useTheme>) =>
   StyleSheet.create({
     container: {
       flexGrow: 1,

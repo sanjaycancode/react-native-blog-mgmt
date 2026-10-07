@@ -1,0 +1,43 @@
+export const lightColors = {
+  background: '#fffaf5',
+  card: '#ffffff',
+  foreground: '#16213e',
+  mutedForeground: '#6b7280',
+  primary: '#e63946',
+  primaryForeground: '#ffffff',
+  primaryHover: '#b92535',
+  secondary: '#fff0e3',
+  secondaryForeground: '#9b2c2c',
+  accent: '#f4a261',
+  muted: '#f6eee7',
+  border: '#eadfd6',
+  divider: '#eadfd6',
+  badgeBg: '#f3f4f6',
+  badgeText: '#374151',
+  badgePrimaryBg: '#fee2e2',
+  badgePrimaryText: '#991b1b',
+  heroCircle: '#fff0e3',
+};
+
+export const darkColors = {
+  background: '#0f1117',
+  card: '#181b24',
+  foreground: '#f3f4f6',
+  mutedForeground: '#9ca3af',
+  primary: '#e63946',
+  primaryForeground: '#ffffff',
+  primaryHover: '#f87171',
+  secondary: '#271f25',
+  secondaryForeground: '#f4a261',
+  accent: '#f4a261',
+  muted: '#222634',
+  border: '#2d3345',
+  divider: '#2d3345',
+  badgeBg: '#222634',
+  badgeText: '#d1d5db',
+  badgePrimaryBg: '#451a1a',
+  badgePrimaryText: '#fca5a5',
+  heroCircle: '#271f25',
+};
+
+export type ThemeColors = typeof lightColors;

@@ -12,8 +12,9 @@ import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 
+import { useTheme } from "@/constants/theme";
+
 import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/context/ThemeContext";
 
 import { formTextInputHelper } from "@/utils";
 import { getErrorMessage } from "@/utils/errorMessage";
@@ -24,7 +25,7 @@ type LoginFormValues = {
 };
 
 export default function LoginScreen() {
-  const { theme } = useTheme();
+  const theme = useTheme();
   const styles = createStyles(theme);
   const { isAuthenticated, isInitializing, login } = useAuth();
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -144,7 +145,7 @@ export default function LoginScreen() {
   );
 }
 
-const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
+const createStyles = (theme: ReturnType<typeof useTheme>) =>
   StyleSheet.create({
     container: {
       flexGrow: 1,

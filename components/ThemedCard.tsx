@@ -1,11 +1,7 @@
-/**
- * Theme-aware card component for displaying content
- */
-
 import React from "react";
 import { StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 
-import { useTheme, useThemeColors } from "@/context/ThemeContext";
+import { useTheme } from "@/constants/theme";
 
 interface ThemedCardProps {
   children: React.ReactNode;
@@ -18,19 +14,20 @@ export function ThemedCard({
   style,
   variant = "outlined",
 }: ThemedCardProps) {
-  const { theme } = useTheme();
-
-  const colors = useThemeColors();
-
-  const styles = createStyles(theme, colors);
+  const { colors, radii, spacing } = useTheme();
 
   return (
     <View
       style={[
         styles.card,
-        styles.container,
-        variant === "elevated" && styles.elevated,
-        variant === "outlined" && styles.outlined,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          borderRadius: radii.lg,
+          padding: spacing.md,
+          borderWidth: variant === "outlined" ? StyleSheet.hairlineWidth : 0,
+          elevation: variant === "elevated" ? 2 : 0,
+        },
         style,
       ]}
     >
@@ -39,24 +36,10 @@ export function ThemedCard({
   );
 }
 
-const createStyles = (
-  theme: ReturnType<typeof useTheme>["theme"],
-  colors: ReturnType<typeof useThemeColors>,
-) =>
-  StyleSheet.create({
-    card: {
-      borderRadius: theme.borderRadius.large,
-      padding: theme.spacing.md,
-      borderWidth: 0,
-    },
-    container: {
-      backgroundColor: colors.backgroundAlt,
-      borderColor: colors.border,
-    },
-    elevated: {
-      ...theme.shadows.medium,
-    },
-    outlined: {
-      borderWidth: 1,
-    },
-  });
+const styles = StyleSheet.create({
+  card: {
+    overflow: "hidden",
+  },
+});
+
+export default ThemedCard;

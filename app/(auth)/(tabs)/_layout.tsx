@@ -4,10 +4,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TabBarButton } from "@/components/TabBarButton";
 
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/constants/theme";
 
 export default function TabLayout() {
-  const { theme } = useTheme();
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
@@ -18,7 +18,7 @@ export default function TabLayout() {
           tabBarShowLabel: false,
           tabBarHideOnKeyboard: true,
           tabBarStyle: {
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.colors.card,
             borderTopColor: theme.colors.border,
             height: theme.spacing.xl * 2 + insets.bottom,
             paddingTop: theme.spacing.sm,
@@ -52,6 +52,6 @@ export default function TabLayout() {
             ),
           }}
         />
-      </Tabs>
+    </Tabs>
   );
 }

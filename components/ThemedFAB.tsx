@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/constants/theme";
 
 interface ThemedFABProps {
   label: string;
@@ -36,7 +36,7 @@ export function ThemedFAB({
   shimmerTranslateX,
   initialExpanded = true,
 }: ThemedFABProps) {
-  const { theme } = useTheme();
+  const theme = useTheme();
   const styles = createStyles(theme);
   const [labelWidth, setLabelWidth] = React.useState(0);
   const [hasAnimated, setHasAnimated] = React.useState(false);
@@ -44,7 +44,7 @@ export function ThemedFAB({
   const horizontalPadding = theme.spacing.md;
   const labelGap = theme.spacing.sm;
   const minExpandedWidth = theme.spacing.xl * 4;
-  const iconSize = theme.typography.heading5.fontSize;
+  const iconSize = theme.typography.sizes.lg;
 
   const expandedWidth = React.useMemo(
     () =>
@@ -85,7 +85,7 @@ export function ThemedFAB({
 
   const animatedBorderRadius = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [theme.borderRadius.xl, COMPACT_SIZE / 2],
+    outputRange: [theme.radii.lg, COMPACT_SIZE / 2],
   });
 
   const labelOpacity = progress.interpolate({
@@ -161,7 +161,7 @@ export function ThemedFAB({
           <Ionicons
             name={iconName}
             size={iconSize}
-            color={theme.colors.textOnPrimary}
+            color={theme.colors.primaryForeground}
           />
 
           <Animated.View
@@ -182,7 +182,7 @@ export function ThemedFAB({
   );
 }
 
-const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
+const createStyles = (theme: ReturnType<typeof useTheme>) =>
   StyleSheet.create({
     container: {
       overflow: "hidden",
@@ -197,15 +197,17 @@ const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
       justifyContent: "center",
     },
     measureText: {
-      ...theme.typography.bodySmall,
+      fontSize: theme.typography.sizes.sm,
+      lineHeight: theme.typography.sizes.sm * theme.typography.lineHeights.normal,
       position: "absolute",
       opacity: 0,
       left: -9999,
       top: -9999,
     },
     label: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textOnPrimary,
+      fontSize: theme.typography.sizes.sm,
+      lineHeight: theme.typography.sizes.sm * theme.typography.lineHeights.normal,
+      color: theme.colors.primaryForeground,
     },
     shimmerBar: {
       position: "absolute",
