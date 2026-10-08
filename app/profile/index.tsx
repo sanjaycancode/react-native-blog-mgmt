@@ -470,7 +470,7 @@ export default function ProfileScreen() {
               <Button
                 title="Analytics"
                 variant="outlined"
-                onPress={() => void openWebsite("/profile/analytics")}
+                onPress={() => router.push("/profile/analytics")}
                 style={{ width: "100%" }}
               />
             </View>
@@ -800,14 +800,12 @@ export default function ProfileScreen() {
                         id: blog._id,
                         title: blog.title,
                         excerpt: blog.description,
-                        author:
-                          blog.author?.name ??
-                          blog.author?.email ??
-                          displayName,
+                        author: blog.author,
                         date: new Date(blog.createdAt).toLocaleDateString(),
                         category: blog.category?.title ?? "Uncategorized",
                         readTime: "Read story",
                         isFeatured: String(blog.status) === "featured",
+                        image: blog.image,
                       }}
                       onPress={() => void openWebsite(`/blogs/${blog.slug}`)}
                     />
