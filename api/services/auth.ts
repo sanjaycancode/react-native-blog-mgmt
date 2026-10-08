@@ -1,44 +1,15 @@
 import { apiClient } from "../client";
-import { LoginPayload, RegisterPayload } from "@/types";
-
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
-export interface VerifyEmailPayload {
-  token: string;
-}
-
-export interface ForgotPasswordPayload {
-  email: string;
-}
-
-export interface ResetPasswordPayload {
-  email: string;
-  token: string;
-  password: string;
-}
-
-export interface MessageResponse {
-  message: string;
-}
-
-export interface LoginResponse extends MessageResponse {
-  payload: AuthUser;
-  /** Short-lived access token (1 minute). */
-  token: string;
-}
-
-export interface RefreshResponse {
-  token: string;
-}
-
-export interface CurrentUserResponse extends MessageResponse {
-  user: AuthUser;
-}
+import type {
+  CurrentUserResponse,
+  ForgotPasswordPayload,
+  LoginPayload,
+  LoginResponse,
+  MessageResponse,
+  RefreshResponse,
+  RegisterPayload,
+  ResetPasswordPayload,
+  VerifyEmailPayload,
+} from "@/types";
 
 export const authApi = {
   /** Creates the account and emails a verification link. Returns 201 with a message only. */

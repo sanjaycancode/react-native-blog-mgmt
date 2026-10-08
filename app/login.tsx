@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -11,20 +10,20 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { authApi } from "@/api/services/auth";
-import { getErrorMessage } from "@/utils/errorMessage";
 
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Navbar from "@/components/NavBar";
 import Button from "@/components/ThemedButton";
 import Card from "@/components/ThemedCard";
-import { useRouter } from "expo-router";
+
+import { useAuth } from "@/context/AuthContext"; // adjust to where your AuthContext lives
 
 import { useTheme } from "@/constants/theme";
 
-const BLOG_BASE_URL = "http://localhost:8081/";
+import { getErrorMessage } from "@/utils/errorMessage";
 
 type FieldName = "email" | "password";
 
@@ -51,6 +50,7 @@ function validate(values: FormValues): Partial<Record<FieldName, string>> {
 export default function LoginScreen() {
   const { colors, typography, spacing, radii } = useTheme();
   const router = useRouter();
+  const { login, isAuthenticated } = useAuth();
 
   const [values, setValues] = useState<FormValues>({
     email: "",
@@ -68,6 +68,8 @@ export default function LoginScreen() {
 
   const errors = useMemo(() => validate(values), [values]);
 
+  // Once the session is set (after login, or if already logged in), leave this screen.
+
   const setField = (field: FieldName, value: string) =>
     setValues((prev) => ({ ...prev, [field]: value }));
 
@@ -84,26 +86,18 @@ export default function LoginScreen() {
 
     setIsSubmitting(true);
     try {
-      const response = await authApi.login({
+      await login({
         email: values.email.trim().toLowerCase(),
         password: values.password,
       });
-
-      const { token, payload } = response.data;
-
-      // TODO: save `token` (and `payload`) in your auth state or secure storage,
-      // then navigate to the home screen.
-      console.log(
-        "Logged in as",
-        payload.email,
-        token ? "(token received)" : "",
-      );
+      router.push("/profile");
+      // The effect above navigates once the session is set.
     } catch (error) {
       Alert.alert("Couldn't log you in", getErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
-  }, [errors, isSubmitting, values]);
+  }, [errors, isSubmitting, login, values]);
 
   const renderLabel = (label: string) => (
     <Text
