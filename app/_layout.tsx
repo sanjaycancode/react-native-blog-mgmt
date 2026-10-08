@@ -12,6 +12,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider, useTheme } from "@/constants/theme";
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ToastProvider } from "@/context/ToastContext";
 
 import { ReactQueryProvider } from "@/lib/react-query/ReactQueryProvider";
 
@@ -28,9 +29,11 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ThemeProvider>
-            <AuthProvider>
-              <RootNavigator />
-            </AuthProvider>
+            <ToastProvider>
+              <AuthProvider>
+                <RootNavigator />
+              </AuthProvider>
+            </ToastProvider>
           </ThemeProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>

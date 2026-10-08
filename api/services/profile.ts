@@ -19,7 +19,6 @@ export interface ProfileData {
   bio?: string;
   isVerified?: boolean;
   socialLinks?: SocialLinks;
-  /** Only the count is used on the profile screen. */
   savedBlogs?: unknown[];
 }
 
@@ -29,6 +28,17 @@ export interface ProfileResponse {
 }
 
 export const profileApi = {
-  /** Gets the logged-in user's profile. Needs the Authorization header. */
   get: () => apiClient.get<ProfileResponse>("/profile"),
+
+  saveBlog(blogId: string) {
+    return apiClient<ProfileResponse>(`/profile/saved-blogs/${blogId}`, {
+      method: "PUT",
+    });
+  },
+
+  removeSavedBlog(blogId: string) {
+    return apiClient<ProfileResponse>(`/profile/saved-blogs/${blogId}`, {
+      method: "DELETE",
+    });
+  }
 };
