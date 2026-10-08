@@ -1,17 +1,20 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   Alert,
   Image,
   Linking,
+  Modal,
   Pressable,
   Share,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 
+import SaveBlogButton from "@/components/SaveBlogButton";
 import { ThemedText } from "@/components/ThemedText";
 
 import { useTheme } from "@/constants/theme";
@@ -21,23 +24,31 @@ import type { Blog } from "@/types/blog";
 interface BlogFeedCardProps {
   blog: Blog;
   isProfile?: boolean;
+  search?: string;
+  currentUserId?: string;
   onPress?: () => void;
+  onAuthorPress?: (authorId: string) => void;
   onLike?: (blogId: string) => Promise<{ likesCount: number; liked: boolean }>;
   onDelete?: (blogId: string) => void;
   onUnpublish?: (blogId: string) => void;
   onEdit?: (blog: Blog) => void;
+  saveButton?: ReactNode;
   commentsContent?: ReactNode;
+  renderComments?: (api: {
+    onCommentCountChange: (count: number) => void;
+  }) => ReactNode;
   commentCount?: number;
   shareUrl?: string;
 }
 
-const statusColors: Record<Blog["status"], "accent" | "primary" | "muted"> = {
-  published: "accent",
-  featured: "accent",
-  submitted: "accent",
-  rejected: "primary",
-  unpublished: "muted",
-  draft: "accent",
+// Same palette as the web card's statusBadgeStyles
+const statusPalette: Record<string, { bg: string; fg: string }> = {
+  published: { bg: "#dcfce7", fg: "#15803d" },
+  featured: { bg: "#ede9fe", fg: "#6d28d9" },
+  submitted: { bg: "#fef9c3", fg: "#a16207" },
+  rejected: { bg: "#fee2e2", fg: "#b91c1c" },
+  unpublished: { bg: "#f3f4f6", fg: "#374151" },
+  draft: { bg: "#fef3c7", fg: "#b45309" },
 };
 
 function formatRelative(value?: string) {
@@ -67,10 +78,10 @@ function getImageUri(image: Blog["image"]): string | undefined {
   return image?.url;
 }
 
-function getAvatarUri(avatar: Blog["author"]["profile"]) {
-  const avatarSource = avatar?.avatar;
-  if (typeof avatarSource === "string") return avatarSource;
-  return avatarSource?.url;
+function getAvatarUri(profile: Blog["author"]["profile"]) {
+  const source = profile?.avatar;
+  if (typeof source === "string") return source;
+  return source?.url;
 }
 
 function stripHtml(value: string) {
@@ -81,31 +92,86 @@ function stripHtml(value: string) {
     .trim();
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// React Native version of the web <Highlight /> util
+function Highlight({
+  text,
+  query,
+  backgroundColor,
+  color,
+}: {
+  text: string;
+  query?: string;
+  backgroundColor: string;
+  color: string;
+}) {
+  const term = query?.trim();
+  if (!term) return <>{text}</>;
+
+  // The capture group puts every match at an odd index
+  const parts = text.split(new RegExp(`(${escapeRegExp(term)})`, "gi"));
+
+  return (
+    <>
+      {parts.map((part, index) =>
+        index % 2 === 1 ? (
+          <Text key={index} style={{ backgroundColor, color }}>
+            {part}
+          </Text>
+        ) : (
+          <Fragment key={index}>{part}</Fragment>
+        ),
+      )}
+    </>
+  );
+}
+
 export function BlogFeedCard({
   blog,
   isProfile = false,
+  search,
+  currentUserId,
   onPress,
+  onAuthorPress,
   onLike,
   onDelete,
   onUnpublish,
   onEdit,
+  saveButton,
   commentsContent,
+  renderComments,
   commentCount,
   shareUrl,
 }: BlogFeedCardProps) {
-  const theme = useTheme();
-  const { colors, spacing, radii, typography } = theme;
+  const { colors, spacing, radii, typography } = useTheme();
+
   const authorName = blog.author?.name ?? "Unknown Author";
   const authorInitial = authorName.trim().charAt(0).toUpperCase() || "?";
   const avatarUri = getAvatarUri(blog.author?.profile);
   const imageUri = getImageUri(blog.image);
+  const excerpt = blog.description ? stripHtml(blog.description) : "";
+
   const [likesCount, setLikesCount] = useState(blog.likes?.length ?? 0);
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(
+    Boolean(currentUserId && blog.likes?.includes(currentUserId)),
+  );
   const [isLiking, setIsLiking] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentCountState, setCommentCountState] = useState<number | null>(
+    commentCount ?? null,
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+
+  const status = statusPalette[blog.status] ?? {
+    bg: colors.badgeBg,
+    fg: colors.badgeText,
+  };
+  const hasChips = (isProfile && Boolean(blog.status)) || Boolean(blog.tags?.length);
 
   const toggleLike = async () => {
     if (!onLike || isLiking) return;
@@ -127,29 +193,34 @@ export function BlogFeedCard({
 
   const shareBlog = async () => {
     try {
-      const message = shareUrl
-        ? `${blog.title}\n${shareUrl}`
-        : `${blog.title}\n/blogs/${blog.slug}`;
-      await Share.share({ message });
+      await Share.share({
+        message: shareUrl ? `${blog.title}\n${shareUrl}` : blog.title,
+      });
     } catch {
       Alert.alert("Unable to share", "Please try again.");
     }
   };
 
   const openAuthorProfile = () => {
-    if (blog.author?._id) {
-      void Linking.openURL(`https://blog-ncc19.vercel.app/authors/${blog.author._id}`).catch(
-        () => Alert.alert("Unable to open author profile", "Please try again."),
-      );
+    const authorId = blog.author?._id;
+    if (!authorId) return;
+
+    if (onAuthorPress) {
+      onAuthorPress(authorId);
+      return;
     }
+
+    void Linking.openURL(
+      `authors/${authorId}`,
+    ).catch(() =>
+      Alert.alert("Unable to open author profile", "Please try again."),
+    );
   };
 
-  const statusStyle =
-    statusColors[blog.status] === "primary"
-      ? { backgroundColor: colors.badgePrimaryBg, color: colors.badgePrimaryText }
-      : statusColors[blog.status] === "muted"
-        ? { backgroundColor: colors.badgeBg, color: colors.badgeText }
-        : { backgroundColor: colors.secondary, color: colors.secondaryForeground };
+  const closeMenuThen = (action: () => void) => () => {
+    setMenuOpen(false);
+    action();
+  };
 
   return (
     <View
@@ -163,7 +234,16 @@ export function BlogFeedCard({
         },
       ]}
     >
-      <View style={[styles.header, { padding: spacing.md, paddingBottom: spacing.sm }]}>
+      {/* a. Header: author row */}
+      <View
+        style={[
+          styles.header,
+          {
+            padding: spacing.md,
+            paddingBottom: hasChips ? spacing.sm : spacing.md,
+          },
+        ]}
+      >
         <Pressable
           accessibilityRole={blog.author?._id ? "link" : undefined}
           accessibilityLabel={`Author: ${authorName}`}
@@ -197,9 +277,17 @@ export function BlogFeedCard({
             <ThemedText
               variant="bodySmall"
               numberOfLines={1}
-              style={{ color: colors.foreground, fontWeight: typography.weights.semibold }}
+              style={{
+                color: colors.foreground,
+                fontWeight: typography.weights.semibold,
+              }}
             >
-              {authorName}
+              <Highlight
+                text={authorName}
+                query={search}
+                backgroundColor={colors.badgePrimaryBg}
+                color={colors.badgePrimaryText}
+              />
             </ThemedText>
             <ThemedText variant="caption" semantic="muted">
               {formatRelative(blog.createdAt)}
@@ -207,15 +295,42 @@ export function BlogFeedCard({
           </View>
         </Pressable>
 
-        <View style={styles.headerActions}>
-          {blog.tags?.slice(0, 2).map((tag) => (
+        {isProfile ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Blog actions"
+            accessibilityState={{ expanded: menuOpen }}
+            onPress={() => setMenuOpen(true)}
+            hitSlop={8}
+            style={styles.menuButton}
+          >
+            <Ionicons
+              name="ellipsis-vertical"
+              size={20}
+              color={colors.mutedForeground}
+            />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {/* Status + tags row (wraps, shows ALL tags like the web card) */}
+      {hasChips ? (
+        <View
+          style={[
+            styles.chips,
+            {
+              paddingHorizontal: spacing.md,
+              paddingBottom: spacing.sm,
+              gap: spacing.xs,
+            },
+          ]}
+        >
+          {isProfile && blog.status ? (
             <View
-              key={tag}
               style={[
-                styles.tag,
+                styles.chip,
                 {
-                  backgroundColor: colors.badgePrimaryBg,
-                  borderColor: colors.border,
+                  backgroundColor: status.bg,
                   borderRadius: radii.full,
                   paddingHorizontal: spacing.sm,
                   paddingVertical: spacing.xs,
@@ -224,99 +339,49 @@ export function BlogFeedCard({
             >
               <ThemedText
                 variant="caption"
-                numberOfLines={1}
+                style={{
+                  color: status.fg,
+                  fontWeight: typography.weights.semibold,
+                  textTransform: "capitalize",
+                }}
+              >
+                {blog.status}
+              </ThemedText>
+            </View>
+          ) : null}
+
+          {blog.tags?.map((tag) => (
+            <View
+              key={tag}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: colors.badgePrimaryBg,
+                  borderColor: colors.border,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderRadius: radii.full,
+                  paddingHorizontal: spacing.sm,
+                  paddingVertical: spacing.xs,
+                },
+              ]}
+            >
+              <ThemedText
+                variant="caption"
                 style={{ color: colors.badgePrimaryText }}
               >
-                {tag}
+                <Highlight
+                  text={tag}
+                  query={search}
+                  backgroundColor={colors.primary}
+                  color={colors.primaryForeground}
+                />
               </ThemedText>
             </View>
           ))}
-
-          {isProfile ? (
-            <View style={styles.menuContainer}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Blog actions"
-                accessibilityState={{ expanded: menuOpen }}
-                onPress={() => setMenuOpen((open) => !open)}
-                hitSlop={8}
-              >
-                <Ionicons
-                  name="ellipsis-vertical"
-                  size={20}
-                  color={colors.mutedForeground}
-                />
-              </Pressable>
-              {menuOpen ? (
-                <View
-                  style={[
-                    styles.menu,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      borderRadius: radii.md,
-                    },
-                  ]}
-                >
-                  {onEdit ? (
-                    <MenuAction
-                      label="Edit"
-                      icon="create-outline"
-                      onPress={() => {
-                        setMenuOpen(false);
-                        onEdit(blog);
-                      }}
-                    />
-                  ) : null}
-                  {blog.status === "published" && onUnpublish ? (
-                    <MenuAction
-                      label="Unpublish"
-                      icon="eye-off-outline"
-                      onPress={() => {
-                        setMenuOpen(false);
-                        onUnpublish(blog._id);
-                      }}
-                    />
-                  ) : null}
-                  {onDelete ? (
-                    <MenuAction
-                      label="Delete"
-                      icon="trash-outline"
-                      onPress={() => {
-                        setMenuOpen(false);
-                        onDelete(blog._id);
-                      }}
-                      destructive
-                    />
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-      </View>
-
-      {isProfile ? (
-        <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.sm }}>
-          <View
-            style={[
-              styles.status,
-              {
-                backgroundColor: statusStyle.backgroundColor,
-                borderRadius: radii.full,
-              },
-            ]}
-          >
-            <ThemedText
-              variant="caption"
-              style={{ color: statusStyle.color, fontWeight: typography.weights.semibold }}
-            >
-              {blog.status}
-            </ThemedText>
-          </View>
         </View>
       ) : null}
 
+      {/* b. Body */}
       <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.md }}>
         <Pressable
           accessibilityRole={onPress ? "button" : undefined}
@@ -324,25 +389,31 @@ export function BlogFeedCard({
           onPress={onPress}
         >
           <ThemedText variant="heading5" style={styles.title}>
-            {blog.title}
+            <Highlight
+              text={blog.title}
+              query={search}
+              backgroundColor={colors.badgePrimaryBg}
+              color={colors.badgePrimaryText}
+            />
           </ThemedText>
         </Pressable>
 
-        {blog.description ? (
+        {excerpt ? (
           <ThemedText
             variant="bodySmall"
             semantic="muted"
             numberOfLines={3}
             style={{ marginTop: spacing.xs }}
           >
-            {stripHtml(blog.description)}
+            <Highlight
+              text={excerpt}
+              query={search}
+              backgroundColor={colors.badgePrimaryBg}
+              color={colors.badgePrimaryText}
+            />
             {"  "}
             {onPress ? (
-              <ThemedText
-                variant="bodySmall"
-                semantic="primary"
-                onPress={onPress}
-              >
+              <ThemedText variant="bodySmall" semantic="primary" onPress={onPress}>
                 Read more
               </ThemedText>
             ) : null}
@@ -374,18 +445,17 @@ export function BlogFeedCard({
         ) : null}
       </View>
 
+      {/* c. Stats row (no top border, same as web) */}
       <View
         style={[
           styles.stats,
-          {
-            borderTopColor: colors.divider,
-            paddingHorizontal: spacing.md,
-            paddingVertical: spacing.sm,
-          },
+          { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
         ]}
       >
         <View style={styles.statItem}>
-          <Ionicons name="thumbs-up" size={14} color={colors.primary} />
+          <View style={[styles.likeBadge, { backgroundColor: colors.primary }]}>
+            <Ionicons name="thumbs-up" size={9} color="#ffffff" />
+          </View>
           <ThemedText variant="caption" semantic="muted">
             {likesCount} {likesCount === 1 ? "like" : "likes"}
           </ThemedText>
@@ -395,13 +465,14 @@ export function BlogFeedCard({
           onPress={() => setCommentsOpen((open) => !open)}
         >
           <ThemedText variant="caption" semantic="muted">
-            {commentCount === undefined
-              ? "Comments"
-              : `${commentCount} ${commentCount === 1 ? "comment" : "comments"}`}
+            {commentCountState !== null
+              ? `${commentCountState} ${commentCountState === 1 ? "comment" : "comments"}`
+              : "Comments"}
           </ThemedText>
         </Pressable>
       </View>
 
+      {/* d. Action bar */}
       <View
         style={[
           styles.actionBar,
@@ -430,8 +501,12 @@ export function BlogFeedCard({
           icon="share-social-outline"
           onPress={() => void shareBlog()}
         />
+        {blog.status === "published" && !isProfile
+          ? (saveButton ?? <SaveBlogButton blogId={blog._id} />)
+          : null}
       </View>
 
+      {/* e. Expandable comments */}
       {commentsOpen ? (
         <View
           style={[
@@ -443,12 +518,73 @@ export function BlogFeedCard({
             },
           ]}
         >
-          {commentsContent ?? (
-            <ThemedText variant="bodySmall" semantic="muted">
-              Comments are not available in this view yet.
-            </ThemedText>
+          {renderComments ? (
+            renderComments({ onCommentCountChange: setCommentCountState })
+          ) : (
+            (commentsContent ?? (
+              <ThemedText variant="bodySmall" semantic="muted">
+                Comments are not available in this view yet.
+              </ThemedText>
+            ))
           )}
         </View>
+      ) : null}
+
+      {/* Profile actions menu (bottom sheet, works the same on iOS/Android/web) */}
+      {isProfile ? (
+        <Modal
+          animationType="fade"
+          transparent
+          visible={menuOpen}
+          onRequestClose={() => setMenuOpen(false)}
+        >
+          <View style={styles.sheetRoot}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close menu"
+              onPress={() => setMenuOpen(false)}
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: colors.foreground, opacity: 0.35 },
+              ]}
+            />
+            <View
+              style={[
+                styles.sheet,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderTopLeftRadius: radii.lg,
+                  borderTopRightRadius: radii.lg,
+                  padding: spacing.sm,
+                },
+              ]}
+            >
+              {onEdit ? (
+                <MenuAction
+                  label="Edit"
+                  icon="create-outline"
+                  onPress={closeMenuThen(() => onEdit(blog))}
+                />
+              ) : null}
+              {blog.status === "published" && onUnpublish ? (
+                <MenuAction
+                  label="Unpublish"
+                  icon="eye-off-outline"
+                  onPress={closeMenuThen(() => onUnpublish(blog._id))}
+                />
+              ) : null}
+              {onDelete ? (
+                <MenuAction
+                  label="Delete"
+                  icon="trash-outline"
+                  destructive
+                  onPress={closeMenuThen(() => onDelete(blog._id))}
+                />
+              ) : null}
+            </View>
+          </View>
+        </Modal>
       ) : null}
     </View>
   );
@@ -493,7 +629,12 @@ function ActionButton({
       <Ionicons name={icon} size={16} color={color} />
       <ThemedText
         variant="bodySmall"
-        style={{ color, fontWeight: active ? typography.weights.semibold : typography.weights.medium }}
+        style={{
+          color,
+          fontWeight: active
+            ? typography.weights.semibold
+            : typography.weights.medium,
+        }}
       >
         {label}
       </ThemedText>
@@ -519,13 +660,13 @@ function MenuAction({
       onPress={onPress}
       style={({ pressed }) => [
         styles.menuAction,
-        { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+        { paddingHorizontal: spacing.md, paddingVertical: spacing.md },
         pressed && { backgroundColor: colors.muted },
       ]}
     >
       <Ionicons
         name={icon}
-        size={16}
+        size={18}
         color={destructive ? colors.primary : colors.foreground}
       />
       <ThemedText
@@ -541,7 +682,7 @@ function MenuAction({
 const styles = StyleSheet.create({
   card: {
     borderWidth: StyleSheet.hairlineWidth,
-    overflow: "visible",
+    overflow: "hidden",
   },
   header: {
     flexDirection: "row",
@@ -556,8 +697,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   avatar: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -570,41 +711,16 @@ const styles = StyleSheet.create({
   authorDetails: {
     flex: 1,
   },
-  headerActions: {
+  menuButton: {
+    padding: 4,
+  },
+  chips: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 6,
-    flexShrink: 1,
   },
-  tag: {
-    borderWidth: StyleSheet.hairlineWidth,
-    maxWidth: 100,
-  },
-  menuContainer: {
-    position: "relative",
-    zIndex: 1,
-    paddingHorizontal: 4,
-  },
-  menu: {
-    position: "absolute",
-    top: 28,
-    right: 0,
-    width: 140,
-    borderWidth: 1,
-    paddingVertical: 4,
-    zIndex: 2,
-    elevation: 4,
-  },
-  menuAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  status: {
+  chip: {
     alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
   },
   title: {
     lineHeight: 26,
@@ -622,12 +738,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   statItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+  },
+  likeBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionBar: {
     flexDirection: "row",
@@ -644,6 +766,19 @@ const styles = StyleSheet.create({
   },
   comments: {
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  sheetRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingBottom: 24,
+  },
+  menuAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
 });
 

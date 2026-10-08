@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
-  Linking,
   Modal,
   Pressable,
   RefreshControl,
@@ -17,6 +15,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import BlogFeedCard from "@/components/BlogFeedCard";
+import Navbar from "@/components/NavBar";
 import SearchBox from "@/components/SearchBox";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
@@ -30,7 +29,6 @@ import { useTheme } from "@/constants/theme";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import type { Blog, Category } from "@/types";
-import Navbar from "@/components/NavBar";
 
 const PAGE_SIZE = 7;
 
@@ -256,16 +254,11 @@ export default function BlogsPage() {
     setReloadKey((key) => key + 1);
   }, []);
 
-  const openBlog = useCallback(async (slug: string) => {
-    try {
-      await Linking.openURL(`blog/${slug}`);
-    } catch {
-      Alert.alert(
-        "Unable to open story",
-        "Please check your connection and try again.",
-      );
-    }
-  }, []);
+  const openBlog = useCallback(
+    (slug: string) =>
+      router.push({ pathname: "/blog/[slug]", params: { slug } }),
+    [router],
+  );
 
   const selectedCategoryTitle =
     categories.find((item) => item.title === category)?.title ??

@@ -90,7 +90,7 @@ export default function LoginScreen() {
         email: values.email.trim().toLowerCase(),
         password: values.password,
       });
-      router.push("/profile");
+     // router.push("/profile");
       // The effect above navigates once the session is set.
     } catch (error) {
       Alert.alert("Couldn't log you in", getErrorMessage(error));
