@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { authApi } from "@/api/services/auth";
 import { getErrorMessage } from "@/utils/errorMessage";
+import { useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,13 +21,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Navbar from "@/components/NavBar";
 import Button from "@/components/ThemedButton";
 import Card from "@/components/ThemedCard";
-import { useRouter } from "expo-router";
 
 import { useTheme } from "@/constants/theme";
 
 const BLOG_BASE_URL = "http://localhost:8081/";
 
-type FieldName = "email" | "password";
+type FieldName = "name" | "email" | "password";
 
 type FormValues = Record<FieldName, string>;
 
@@ -38,25 +38,48 @@ const ERROR_COLOR = "#DC2626";
 function validate(values: FormValues): Partial<Record<FieldName, string>> {
   const errors: Partial<Record<FieldName, string>> = {};
 
+  if (values.name.trim().length < 2) {
+    errors.name = "Enter your name (at least 2 characters).";
+  }
   if (!EMAIL_PATTERN.test(values.email.trim())) {
     errors.email = "Enter a valid email, like you@example.com.";
   }
-  if (values.password.length === 0) {
-    errors.password = "Enter your password.";
+  if (values.password.length < 8) {
+    errors.password = "Use at least 8 characters.";
   }
 
   return errors;
 }
 
-export default function LoginScreen() {
+/** 0 (empty) to 4 (strong). */
+function getPasswordStrength(password: string): number {
+  if (!password) return 0;
+  let score = 0;
+  if (password.length >= 8) score += 1;
+  if (password.length >= 12) score += 1;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 1;
+  if (/\d/.test(password) && /[^A-Za-z0-9]/.test(password)) score += 1;
+  return Math.max(score, 1);
+}
+
+const STRENGTH_LABELS = ["", "Weak", "Okay", "Good", "Strong"];
+
+/**
+ * TODO: connect this to your register endpoint.
+ * Throw an Error with a readable message if registration fails.
+ */
+
+export default function RegisterScreen() {
   const { colors, typography, spacing, radii } = useTheme();
   const router = useRouter();
 
   const [values, setValues] = useState<FormValues>({
+    name: "",
     email: "",
     password: "",
   });
   const [touched, setTouched] = useState<Record<FieldName, boolean>>({
+    name: false,
     email: false,
     password: false,
   });
@@ -64,9 +87,17 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
   const errors = useMemo(() => validate(values), [values]);
+  const strength = getPasswordStrength(values.password);
+
+  const strengthColor = (level: number) => {
+    if (level <= 1) return ERROR_COLOR;
+    if (level === 2) return "#F59E0B";
+    return colors.primary;
+  };
 
   const setField = (field: FieldName, value: string) =>
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -76,30 +107,28 @@ export default function LoginScreen() {
     setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
-  const handleLogin = useCallback(async () => {
+  const handleRegister = useCallback(async () => {
     if (isSubmitting) return;
 
-    setTouched({ email: true, password: true });
+    setTouched({ name: true, email: true, password: true });
     if (Object.keys(errors).length > 0) return;
 
     setIsSubmitting(true);
     try {
-      const response = await authApi.login({
+      const response = await authApi.register({
+        name: values.name.trim(),
         email: values.email.trim().toLowerCase(),
         password: values.password,
       });
 
-      const { token, payload } = response.data;
+      Alert.alert("Check your email", response.data.message);
 
-      // TODO: save `token` (and `payload`) in your auth state or secure storage,
-      // then navigate to the home screen.
-      console.log(
-        "Logged in as",
-        payload.email,
-        token ? "(token received)" : "",
-      );
+      setValues({ name: "", email: "", password: "" });
+      setTouched({ name: false, email: false, password: false });
+      setShowPassword(false);
+      // router.push("/profile");
     } catch (error) {
-      Alert.alert("Couldn't log you in", getErrorMessage(error));
+      Alert.alert("Couldn't create your account", getErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -197,7 +226,11 @@ export default function LoginScreen() {
                 },
               ]}
             >
-              <Ionicons name="book-outline" size={14} color={colors.primary} />
+              <Ionicons
+                name="create-outline"
+                size={14}
+                color={colors.primary}
+              />
               <Text
                 style={{
                   color: colors.secondaryForeground,
@@ -205,7 +238,7 @@ export default function LoginScreen() {
                   fontWeight: typography.weights.semibold,
                 }}
               >
-                Good to see you again
+                Free for every writer
               </Text>
             </View>
 
@@ -220,8 +253,8 @@ export default function LoginScreen() {
                 },
               ]}
             >
-              Welcome back,{"\n"}
-              <Text style={{ color: colors.primary }}>keep writing.</Text>
+              Start writing,{"\n"}
+              <Text style={{ color: colors.primary }}>find your readers.</Text>
             </Text>
 
             <Text
@@ -232,8 +265,8 @@ export default function LoginScreen() {
                 marginTop: spacing.md,
               }}
             >
-              Log in to pick up your drafts, publish new stories, and read what
-              the community has been up to.
+              Create an account to publish your own stories and join a growing
+              Nepali community of writers.
             </Text>
           </View>
 
@@ -246,8 +279,39 @@ export default function LoginScreen() {
                 padding: spacing.xl,
               }}
             >
-              {/* Email */}
+              {/* Name */}
               <View>
+                {renderLabel("Full name")}
+                <View style={inputShellStyle("name")}>
+                  <Ionicons
+                    name="person-outline"
+                    size={18}
+                    color={
+                      focused === "name"
+                        ? colors.primary
+                        : colors.mutedForeground
+                    }
+                  />
+                  <TextInput
+                    value={values.name}
+                    onChangeText={(text) => setField("name", text)}
+                    onFocus={() => setFocused("name")}
+                    onBlur={() => markTouched("name")}
+                    placeholder="Your name"
+                    placeholderTextColor={colors.mutedForeground}
+                    autoCapitalize="words"
+                    autoComplete="name"
+                    textContentType="name"
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailRef.current?.focus()}
+                    style={[styles.input, inputTextStyle]}
+                  />
+                </View>
+                {renderError("name")}
+              </View>
+
+              {/* Email */}
+              <View style={{ marginTop: spacing.lg }}>
                 {renderLabel("Email")}
                 <View style={inputShellStyle("email")}>
                   <Ionicons
@@ -260,6 +324,7 @@ export default function LoginScreen() {
                     }
                   />
                   <TextInput
+                    ref={emailRef}
                     value={values.email}
                     onChangeText={(text) => setField("email", text)}
                     onFocus={() => setFocused("email")}
@@ -298,15 +363,15 @@ export default function LoginScreen() {
                     onChangeText={(text) => setField("password", text)}
                     onFocus={() => setFocused("password")}
                     onBlur={() => markTouched("password")}
-                    placeholder="Your password"
+                    placeholder="At least 8 characters"
                     placeholderTextColor={colors.mutedForeground}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
-                    autoComplete="current-password"
-                    textContentType="password"
+                    autoComplete="new-password"
+                    textContentType="newPassword"
                     returnKeyType="done"
-                    onSubmitEditing={() => void handleLogin()}
+                    onSubmitEditing={() => void handleRegister()}
                     style={[styles.input, inputTextStyle]}
                   />
                   <Pressable
@@ -325,29 +390,73 @@ export default function LoginScreen() {
                   </Pressable>
                 </View>
                 {renderError("password")}
+
+                {/* Strength meter */}
+                {values.password.length > 0 && (
+                  <View style={{ marginTop: spacing.sm }}>
+                    <View style={styles.strengthBars}>
+                      {[1, 2, 3, 4].map((level) => (
+                        <View
+                          key={level}
+                          style={[
+                            styles.strengthBar,
+                            {
+                              backgroundColor:
+                                level <= strength
+                                  ? strengthColor(strength)
+                                  : colors.border,
+                            },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                    <Text
+                      style={{
+                        color: colors.mutedForeground,
+                        fontSize: typography.sizes.xs,
+                        marginTop: spacing.xs,
+                      }}
+                    >
+                      Password strength: {STRENGTH_LABELS[strength]}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <Button
-                title={isSubmitting ? "Logging in..." : "Log in"}
+                title={isSubmitting ? "Creating account..." : "Create account"}
                 variant="filled"
-                onPress={() => void handleLogin()}
+                onPress={() => void handleRegister()}
                 style={{ width: "100%", marginTop: spacing.xl }}
               />
+
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: typography.sizes.xs,
+                  lineHeight: 18,
+                  textAlign: "center",
+                  marginTop: spacing.md,
+                }}
+              >
+                By creating an account, you agree to our terms and privacy
+                policy.
+              </Text>
             </Card>
           </View>
 
-          {/* Register link */}
-          <View style={[styles.registerRow, { marginTop: spacing.xl }]}>
+          {/* Login link */}
+          <View style={[styles.loginRow, { marginTop: spacing.xl }]}>
             <Text
               style={{
                 color: colors.mutedForeground,
                 fontSize: typography.sizes.sm,
               }}
             >
-              New here?
+              Already have an account?
             </Text>
             <Pressable
-              onPress={() => router.replace("/register")}
+              onPress={() => router.replace("/login")}
               hitSlop={8}
               accessibilityRole="link"
             >
@@ -358,7 +467,7 @@ export default function LoginScreen() {
                   fontWeight: typography.weights.semibold,
                 }}
               >
-                Create an account
+                Log in
               </Text>
             </Pressable>
           </View>
@@ -420,7 +529,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  registerRow: {
+  strengthBars: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
+  loginRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
