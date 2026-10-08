@@ -6,9 +6,10 @@ import { useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 
-import  FormField  from "@/components/forms/FormField";
+import FormField from "@/components/forms/FormField";
 import FormImagePicker from "@/components/forms/FormImagePicker";
 import FormSelect from "@/components/forms/FormSelect";
+import RichTextEditor from "@/components/forms/RichTextEditor";
 import { Navbar } from "@/components/NavBar";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedCard } from "@/components/ThemedCard";
@@ -32,22 +33,17 @@ type BlogStatus = "draft" | "submitted";
 type FieldName = "title" | "description" | "category";
 type FieldErrors = Partial<Record<FieldName, string>>;
 
-function toDescriptionHtml(value: string) {
+function stripHtml(value: string) {
   return value
-    .trim()
-    .split(/\r?\n/)
-    .map((paragraph) =>
-      paragraph
-        .trim()
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;"),
-    )
-    .filter(Boolean)
-    .map((paragraph) => `<p>${paragraph}</p>`)
-    .join("");
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getSelectedImageName(image: ImagePickerAsset) {
@@ -61,7 +57,7 @@ function getSelectedImageName(image: ImagePickerAsset) {
 
 export default function CreateBlogPage() {
   const router = useRouter();
-  const { colors, spacing, radii, typography } = useTheme();
+  const { colors, spacing, radii } = useTheme();
   const { session, isAuthenticated, isInitializing } = useAuth();
   const { showToast } = useToast();
 
@@ -107,7 +103,7 @@ export default function CreateBlogPage() {
 
   const validate = () => {
     const nextErrors: FieldErrors = {};
-    const plainDescription = description.trim();
+    const plainDescription = stripHtml(description);
 
     if (!title.trim()) {
       nextErrors.title = "Title is required.";
@@ -146,7 +142,7 @@ export default function CreateBlogPage() {
     try {
       const formData = new FormData();
       formData.append("title", title.trim());
-      formData.append("description", toDescriptionHtml(description));
+      formData.append("description", description);
       formData.append("category", category);
       formData.append("status", status);
       formData.append("tags", tagsInput.trim());
@@ -318,24 +314,14 @@ export default function CreateBlogPage() {
               error={fieldErrors.description}
               hint="Write at least 20 characters. Separate paragraphs with a blank line."
             >
-              <ThemedTextInput
-                accessibilityLabel="Blog description"
-                value={description}
-                onChangeText={(value) =>
+              <RichTextEditor
+                id="blog-description"
+                content={description}
+                placeholder="Write your story..."
+                disabled={submitting}
+                onChange={(value) =>
                   updateField("description", value, setDescription)
                 }
-                placeholder="Write your story..."
-                multiline
-                textAlignVertical="top"
-                editable={!submitting}
-                style={[
-                  styles.descriptionInput,
-                  {
-                    minHeight: 220,
-                    paddingTop: spacing.md,
-                    lineHeight: typography.sizes.base * typography.lineHeights.relaxed,
-                  },
-                ]}
               />
             </FormField>
 
@@ -476,9 +462,6 @@ const styles = StyleSheet.create({
   readOnlyField: {
     borderWidth: StyleSheet.hairlineWidth,
     justifyContent: "center",
-  },
-  descriptionInput: {
-    minHeight: 220,
   },
   actions: {
     borderTopWidth: StyleSheet.hairlineWidth,

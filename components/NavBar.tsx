@@ -19,7 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 
 import Button from "./ThemedButton";
 
-const BLOG_BASE_URL = "https://blog-ncc19.vercel.app";
+const BLOG_BASE_URL = "http://localhost:8081";
 
 export function Navbar() {
   const { colors, typography, spacing, isDark, toggleTheme } = useTheme();
@@ -200,14 +200,14 @@ export function Navbar() {
           <MenuItem label="Home" onPress={goToHome} active />
           <MenuItem
             label="Explore"
-            onPress={() => void openWebsite("/blogs")}
+            onPress={() => void openWebsite("/blog")}
           />
 
           {isLoggedIn ? (
             <>
               <MenuItem
                 label="Write"
-                onPress={() => void openWebsite("/blogs/create")}
+                onPress={() => void openWebsite("/blog/create")}
               />
               <MenuItem label="Profile" onPress={goToProfile} />
 
