@@ -45,8 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (payload: LoginPayload) => {
     // Throws on bad credentials / unverified email; the screen shows the message.
-    const {data} = await authApi.login(payload);
-    console.log("data", data);
+    const { data } = await authApi.login(payload);
 
     const nextSession: AuthResponse = { user: data.payload, token: data.token };
 

@@ -1,11 +1,21 @@
 import React, { useState } from "react";
-import { Alert, Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/constants/theme";
+// ⚠️ Adjust this import to match your auth setup
+import { useAuth } from "@/context/AuthContext";
 
 import Button from "./ThemedButton";
 
@@ -13,12 +23,17 @@ const BLOG_BASE_URL = "https://blog-ncc19.vercel.app";
 
 export function Navbar() {
   const { colors, typography, spacing, isDark, toggleTheme } = useTheme();
+  const { session, logout } = useAuth(); // user is null/undefined when logged out
+  const user = session?.user;
+  const isLoggedIn = !!user;
+
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
 
-  const openWebsite = async (path: string) => {
-    setIsOpen(false);
+  const closeMenu = () => setIsOpen(false);
 
+  const openWebsite = async (path: string) => {
+    closeMenu();
     try {
       await Linking.openURL(`${BLOG_BASE_URL}${path}`);
     } catch {
@@ -30,23 +45,72 @@ export function Navbar() {
   };
 
   const goToLogin = () => {
-    setIsOpen(false);
+    closeMenu();
     router.push("/login");
   };
 
   const goToHome = () => {
-    setIsOpen(false);
+    closeMenu();
     router.replace("/");
   };
+
+  const goToProfile = () => {
+    closeMenu();
+    // ⚠️ Change to your real profile route, or use openWebsite(`/profile/${user.id}`)
+    router.push("/profile");
+  };
+
+  const handleLogout = async () => {
+    closeMenu();
+    try {
+      await logout();
+      router.replace("/");
+    } catch {
+      Alert.alert("Logout failed", "Please try again.");
+    }
+  };
+
+  const MenuItem = ({
+    label,
+    onPress,
+    active = false,
+  }: {
+    label: string;
+    onPress: () => void;
+    active?: boolean;
+  }) => (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        styles.menuItem,
+        {
+          backgroundColor: pressed ? colors.muted : "transparent",
+          paddingVertical: spacing.md,
+          paddingHorizontal: spacing.md,
+          borderRadius: 8,
+        },
+      ]}
+    >
+      <Text
+        style={{
+          color: active ? colors.primary : colors.foreground,
+          fontSize: typography.sizes.base,
+          fontWeight: active
+            ? typography.weights.bold
+            : typography.weights.medium,
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
 
   return (
     <View
       style={[
         styles.container,
-        {
-          backgroundColor: colors.card,
-          borderBottomColor: colors.border,
-        },
+        { backgroundColor: colors.card, borderBottomColor: colors.border },
       ]}
     >
       <View
@@ -55,7 +119,11 @@ export function Navbar() {
           { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
         ]}
       >
-        <Pressable onPress={goToHome} style={styles.brand} accessibilityRole="link">
+        <Pressable
+          onPress={goToHome}
+          style={styles.brand}
+          accessibilityRole="link"
+        >
           <View style={styles.logoIcon}>
             <Image
               source={require("../assets/images/logo.png")}
@@ -104,7 +172,9 @@ export function Navbar() {
               },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={isOpen ? "Close navigation menu" : "Open navigation menu"}
+            accessibilityLabel={
+              isOpen ? "Close navigation menu" : "Open navigation menu"
+            }
             accessibilityState={{ expanded: isOpen }}
           >
             <Ionicons
@@ -127,91 +197,65 @@ export function Navbar() {
             },
           ]}
         >
-          <Pressable
-            onPress={goToHome}
-            style={({ pressed }) => [
-              styles.menuItem,
-              {
-                backgroundColor: pressed ? colors.muted : "transparent",
-                paddingVertical: spacing.md,
-                paddingHorizontal: spacing.md,
-                borderRadius: 8,
-              },
-            ]}
-          >
-            <Text
-              style={{
-                color: colors.primary,
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.bold,
-              }}
-            >
-              Home
-            </Text>
-          </Pressable>
-          <Pressable
+          <MenuItem label="Home" onPress={goToHome} active />
+          <MenuItem
+            label="Explore"
             onPress={() => void openWebsite("/blogs")}
-            style={({ pressed }) => [
-              styles.menuItem,
-              {
-                backgroundColor: pressed ? colors.muted : "transparent",
-                paddingVertical: spacing.md,
-                paddingHorizontal: spacing.md,
-                borderRadius: 8,
-              },
-            ]}
-          >
-            <Text
-              style={{
-                color: colors.foreground,
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.medium,
-              }}
-            >
-              Explore
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => void openWebsite("/register")}
-            style={({ pressed }) => [
-              styles.menuItem,
-              {
-                backgroundColor: pressed ? colors.muted : "transparent",
-                paddingVertical: spacing.md,
-                paddingHorizontal: spacing.md,
-                borderRadius: 8,
-              },
-            ]}
-          >
-            <Text
-              style={{
-                color: colors.foreground,
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.medium,
-              }}
-            >
-              Write
-            </Text>
-          </Pressable>
+          />
 
-          <View
-            style={[
-              styles.menuAuth,
-              {
-                borderTopColor: colors.border,
-                paddingTop: spacing.md,
-                marginTop: spacing.sm,
-                gap: spacing.sm,
-              },
-            ]}
-          >
-            <Button title="Login" variant="outlined" onPress={goToLogin} />
-            <Button
-              title="Get Started"
-              variant="filled"
-              onPress={() => void openWebsite("/register")}
-            />
-          </View>
+          {isLoggedIn ? (
+            <>
+              <MenuItem
+                label="Write"
+                onPress={() => void openWebsite("/blogs/create")}
+              />
+              <MenuItem label="Profile" onPress={goToProfile} />
+
+              <View
+                style={[
+                  styles.menuAuth,
+                  {
+                    borderTopColor: colors.border,
+                    paddingTop: spacing.md,
+                    marginTop: spacing.sm,
+                    gap: spacing.sm,
+                  },
+                ]}
+              >
+                <Button
+                  title="Logout"
+                  variant="outlined"
+                  onPress={() => void handleLogout()}
+                />
+              </View>
+            </>
+          ) : (
+            <>
+              <MenuItem
+                label="Write"
+                onPress={() =>  router.push("/register")}
+              />
+
+              <View
+                style={[
+                  styles.menuAuth,
+                  {
+                    borderTopColor: colors.border,
+                    paddingTop: spacing.md,
+                    marginTop: spacing.sm,
+                    gap: spacing.sm,
+                  },
+                ]}
+              >
+                <Button title="Login" variant="outlined" onPress={goToLogin} />
+                <Button
+                  title="Get Started"
+                  variant="filled"
+                  onPress={() =>  router.push("/register")}
+                />
+              </View>
+            </>
+          )}
         </View>
       ) : null}
     </View>

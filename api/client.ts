@@ -100,5 +100,41 @@ function refreshAccessToken(): Promise<string> {
 }
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: unknown) => Promise.reject(normalizeApiError(error)),
+  async (error: unknown) => {
+    if (axios.isAxiosError(error)) {
+      const original = error.config as RetryableConfig | undefined;
+      const url = original?.url ?? "";
+      const isAuthCall =
+        url.includes("/auth/login") || url.includes("/auth/refresh");
+
+      // Expired access token: refresh once, then retry the original request.
+      if (
+        error.response?.status === 401 &&
+        original &&
+        !original._retry &&
+        !isAuthCall &&
+        getAccessToken()
+      ) {
+        original._retry = true;
+
+        let token: string;
+        try {
+          token = await refreshAccessToken();
+        } catch (refreshError) {
+          // Only end the session if the server actually rejected the refresh,
+          // not when the phone is just offline.
+          if (axios.isAxiosError(refreshError) && refreshError.response) {
+            notifySessionExpired();
+          }
+          return Promise.reject(normalizeApiError(error));
+        }
+
+        notifyTokenRefreshed(token);
+        original.headers.Authorization = `Bearer ${token}`;
+        return apiClient(original);
+      }
+    }
+
+    return Promise.reject(normalizeApiError(error));
+  },
 );
