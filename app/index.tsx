@@ -143,7 +143,6 @@ export default function HomeScreen() {
           something useful, then add your own voice.
         </Text>
 
-        {/* Hero Actions */}
         <View
           style={[
             styles.heroActions,
@@ -152,7 +151,7 @@ export default function HomeScreen() {
         >
           <Button title="Browse Blogs"
             variant="filled"
-            onPress={() => void openWebsite("/blogs")}
+            onPress={() => void openWebsite("/blog")}
             style={styles.heroButton}
           />
           <Button title="Join the community"
@@ -250,7 +249,7 @@ export default function HomeScreen() {
           </View>
 
           <Pressable
-            onPress={() => void openWebsite("/blogs")}
+            onPress={() => void openWebsite("/blog")}
             style={styles.linkRow}
           >
             <Text
@@ -283,18 +282,8 @@ export default function HomeScreen() {
             filteredBlogs.map((blog) => (
               <BlogCard
                 key={blog._id}
-                blog={{
-                  id: blog._id,
-                  title: blog.title,
-                  excerpt: blog.description,
-                  author:
-                    blog.author.name ?? blog.author.email ?? "Nepal Can writer",
-                  date: new Date(blog.createdAt).toLocaleDateString(),
-                  category: blog.category?.title ?? "Uncategorized",
-                  readTime: "Read story",
-                  isFeatured: blog.status === "featured",
-                }}
-                onPress={() => void openWebsite(`/blogs/${blog.slug}`)}
+                blog={blog}
+                onPress={() => void openWebsite(`/blog/${blog.slug}`)}
               />
             ))
           ) : (
