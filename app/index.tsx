@@ -151,7 +151,7 @@ export default function HomeScreen() {
         >
           <Button title="Browse Blogs"
             variant="filled"
-            onPress={() => void openWebsite("/blogs")}
+            onPress={() => void openWebsite("/blog")}
             style={styles.heroButton}
           />
           <Button title="Join the community"
@@ -249,7 +249,7 @@ export default function HomeScreen() {
           </View>
 
           <Pressable
-            onPress={() => void openWebsite("/blogs")}
+            onPress={() => void openWebsite("/blog")}
             style={styles.linkRow}
           >
             <Text
@@ -283,7 +283,7 @@ export default function HomeScreen() {
               <BlogCard
                 key={blog._id}
                 blog={blog}
-                onPress={() => void openWebsite(`/blogs/${blog.slug}`)}
+                onPress={() => void openWebsite(`/blog/${blog.slug}`)}
               />
             ))
           ) : (
