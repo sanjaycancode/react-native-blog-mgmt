@@ -143,7 +143,6 @@ export default function HomeScreen() {
           something useful, then add your own voice.
         </Text>
 
-        {/* Hero Actions */}
         <View
           style={[
             styles.heroActions,
@@ -283,17 +282,7 @@ export default function HomeScreen() {
             filteredBlogs.map((blog) => (
               <BlogCard
                 key={blog._id}
-                blog={{
-                  id: blog._id,
-                  title: blog.title,
-                  excerpt: blog.description,
-                  author:
-                    blog.author.name ?? blog.author.email ?? "Nepal Can writer",
-                  date: new Date(blog.createdAt).toLocaleDateString(),
-                  category: blog.category?.title ?? "Uncategorized",
-                  readTime: "Read story",
-                  isFeatured: blog.status === "featured",
-                }}
+                blog={blog}
                 onPress={() => void openWebsite(`/blogs/${blog.slug}`)}
               />
             ))

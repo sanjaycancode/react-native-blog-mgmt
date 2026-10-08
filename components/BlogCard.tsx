@@ -1,174 +1,219 @@
-import React from 'react';
-import { Pressable,StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from "react-native";
 
-import { useTheme } from '../constants/theme';
+import { Ionicons } from "@expo/vector-icons";
 
-import Badge from './Badge';
-import Card from './ThemedCard';
+import { ThemedText } from "@/components/ThemedText";
 
-export interface BlogItem {
-  id: string;
-  title: string;
-  excerpt: string;
-  author: string;
-  date: string;
-  category: string;
-  readTime: string;
-  isFeatured?: boolean;
-}
+import { useTheme } from "@/constants/theme";
+
+import type { Blog } from "@/types/blog";
 
 interface BlogCardProps {
-  blog: BlogItem;
+  blog: Blog;
   onPress?: () => void;
 }
 
+function getImageUri(image: Blog["image"]) {
+  if (typeof image === "string") return image;
+  return image?.url;
+}
+
+function getAuthorName(blog: Blog) {
+  return blog.author?.name ?? blog.author?.email ?? "Unknown author";
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getExcerpt(description: string) {
+  return description
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function BlogCard({ blog, onPress }: BlogCardProps) {
-  const { colors, typography, spacing, radii } = useTheme();
+  const { colors, spacing, radii, typography } = useTheme();
+  const imageUri = getImageUri(blog.image);
 
   return (
-    <Pressable onPress={onPress}>
-      <Card style={{ marginBottom: spacing.lg }}>
-        <View style={styles.header}>
-          <Badge
-            label={blog.category}
-            variant={blog.isFeatured ? 'primary' : 'default'}
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          backgroundColor: colors.background,
+          borderColor: colors.border,
+          borderRadius: radii.lg,
+          opacity: pressed ? 0.94 : 1,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.imageContainer,
+          {
+            aspectRatio: 1.6,
+            backgroundColor: colors.muted,
+            borderTopLeftRadius: radii.lg,
+            borderTopRightRadius: radii.lg,
+          },
+        ]}
+      >
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            accessibilityLabel={blog.title}
+            resizeMode="cover"
+            style={styles.image}
           />
-          <Text
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Ionicons
+              name="image-outline"
+              size={32}
+              color={colors.mutedForeground}
+            />
+          </View>
+        )}
+        {blog.category?.title ? (
+          <View
             style={[
-              styles.metaText,
+              styles.categoryBadge,
               {
-                color: colors.mutedForeground,
-                fontSize: typography.sizes.xs,
+                backgroundColor: colors.background,
+                borderRadius: radii.full,
+                left: spacing.sm + 2,
+                top: spacing.sm + 2,
+                paddingHorizontal: spacing.sm,
+                paddingVertical: spacing.xs,
               },
             ]}
           >
-            {blog.readTime}
-          </Text>
-        </View>
+            <ThemedText
+              variant="caption"
+              numberOfLines={1}
+              style={{
+                color: colors.foreground,
+                fontWeight: typography.weights.semibold,
+              }}
+            >
+              {blog.category.title}
+            </ThemedText>
+          </View>
+        ) : null}
+      </View>
 
-        <Text
-          style={[
-            styles.title,
-            {
-              color: colors.foreground,
-              fontSize: typography.sizes.lg,
-              fontWeight: typography.weights.bold,
-              marginTop: spacing.sm,
-            },
-          ]}
+      <View
+        style={[
+          styles.content,
+          {
+            padding: spacing.md,
+            gap: spacing.sm,
+          },
+        ]}
+      >
+        <ThemedText
+          variant="heading6"
           numberOfLines={2}
+          style={{ color: colors.foreground, lineHeight: 24 }}
         >
           {blog.title}
-        </Text>
+        </ThemedText>
 
-        <Text
-          style={[
-            styles.excerpt,
-            {
-              color: colors.mutedForeground,
-              fontSize: typography.sizes.sm,
-              marginTop: spacing.xs,
-              lineHeight: 20,
-            },
-          ]}
-          numberOfLines={3}
-        >
-          {blog.excerpt}
-        </Text>
-
-        <View
-          style={[
-            styles.footer,
-            {
-              borderTopColor: colors.border,
-              paddingTop: spacing.md,
-              marginTop: spacing.md,
-            },
-          ]}
-        >
-          <View style={styles.authorRow}>
-            <View
-              style={[
-                styles.authorAvatar,
-                {
-                  backgroundColor: colors.primary,
-                  borderRadius: radii.full,
-                },
-              ]}
-            >
-              <Text
-                style={{
-                  color: colors.primaryForeground,
-                  fontSize: typography.sizes.xs,
-                  fontWeight: typography.weights.bold,
-                }}
-              >
-                {blog.author.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <Text
-              style={[
-                styles.authorName,
-                {
-                  color: colors.foreground,
-                  fontSize: typography.sizes.xs,
-                  fontWeight: typography.weights.medium,
-                },
-              ]}
-            >
-              {blog.author}
-            </Text>
-          </View>
-
-          <Text
-            style={[
-              styles.date,
-              {
-                color: colors.mutedForeground,
-                fontSize: typography.sizes.xs,
-              },
-            ]}
+        {blog.description ? (
+          <ThemedText
+            variant="bodySmall"
+            semantic="muted"
+            numberOfLines={3}
+            style={{ lineHeight: 21 }}
           >
-            {blog.date}
-          </Text>
+            {getExcerpt(blog.description)}
+          </ThemedText>
+        ) : null}
+
+        <View style={styles.footer}>
+          <ThemedText
+            variant="caption"
+            semantic="muted"
+            numberOfLines={1}
+            style={styles.author}
+          >
+            {getAuthorName(blog)}
+          </ThemedText>
+          <ThemedText variant="caption" semantic="muted">
+            {formatDate(blog.createdAt)}
+          </ThemedText>
         </View>
-      </Card>
+
+        <View style={styles.readMore}>
+          <ThemedText
+            variant="bodySmall"
+            style={{ color: colors.primary, fontWeight: typography.weights.medium }}
+          >
+            Read more
+          </ThemedText>
+          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+        </View>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  card: {
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 16,
   },
-  metaText: {
-    fontWeight: '500',
+  imageContainer: {
+    width: "100%",
+    overflow: "hidden",
+    position: "relative",
   },
-  title: {
-    letterSpacing: -0.3,
+  image: {
+    width: "100%",
+    height: "100%",
   },
-  excerpt: {},
+  imagePlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryBadge: {
+    position: "absolute",
+    maxWidth: "80%",
+  },
+  content: {
+    flex: 1,
+  },
   footer: {
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  authorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginTop: "auto",
+    paddingTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
   },
-  authorAvatar: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+  author: {
+    flexShrink: 1,
   },
-  authorName: {},
-  date: {},
+  readMore: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
 });
 
 export default BlogCard;
