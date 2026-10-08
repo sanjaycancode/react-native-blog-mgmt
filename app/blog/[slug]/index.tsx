@@ -471,7 +471,7 @@ export default function BlogDetailPage() {
                 startIcon={<Ionicons name="create-outline" />}
                 onPress={() =>
                   void Linking.openURL(
-                    `https://blog-ncc19.vercel.app/blogs/${blog.slug}/edit`,
+                    `/blog/${blog.slug}/edit`,
                   ).catch((linkError: unknown) =>
                     showToast(getErrorMessage(linkError), "error"),
                   )
@@ -646,6 +646,13 @@ export default function BlogDetailPage() {
                 onPress={() => void handleLike()}
                 style={styles.engagementButton}
               />
+                <ThemedButton
+                title="Share story"
+                variant="outlined"
+                startIcon={<Ionicons name="share-social-outline" />}
+                onPress={() => void handleShare()}
+                style={styles.engagementButton}
+              />
               {blog.status === "published" ? (
                 <View
                   style={[
@@ -659,13 +666,7 @@ export default function BlogDetailPage() {
                   <SaveBlogButton blogId={blog._id} />
                 </View>
               ) : null}
-              <ThemedButton
-                title="Share story"
-                variant="outlined"
-                startIcon={<Ionicons name="share-social-outline" />}
-                onPress={() => void handleShare()}
-                style={styles.engagementButton}
-              />
+
             </View>
             <View
               style={[
