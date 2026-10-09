@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 
 import type { ImagePickerAsset } from "expo-image-picker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 
@@ -25,13 +30,20 @@ import { useTheme } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 
+import type { Blog } from "@/types/blog";
 import type { Category } from "@/types/category";
 
 import { getErrorMessage } from "@/utils/errorMessage";
 
+import { env } from "@/lib/config/env";
+
 type BlogStatus = "draft" | "submitted";
 type FieldName = "title" | "description" | "category";
 type FieldErrors = Partial<Record<FieldName, string>>;
+
+function getParam(value?: string | string[]) {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
 
 function stripHtml(value: string) {
   return value
@@ -55,19 +67,37 @@ function getSelectedImageName(image: ImagePickerAsset) {
   return `cover-image.${extension}`;
 }
 
-export default function CreateBlogPage() {
+function getImageUri(image?: Blog["image"]) {
+  if (!image) return undefined;
+  if (typeof image !== "string" && image.url) return image.url;
+
+  const path = typeof image === "string" ? image : image.key;
+  if (!path) return undefined;
+  if (/^(https?:|data:)/i.test(path)) return path;
+
+  return `${env.apiBaseUrl.replace(/\/$/, "")}/uploads/blogs/${path.replace(/^\/+/, "")}`;
+}
+
+export default function EditBlogPage() {
   const router = useRouter();
+  const { slug: slugParam } = useLocalSearchParams<{
+    slug?: string | string[];
+  }>();
+  const slug = getParam(slugParam);
   const { colors, spacing, radii } = useTheme();
   const { session, isAuthenticated, isInitializing } = useAuth();
   const { showToast } = useToast();
 
+  const [blog, setBlog] = useState<Blog | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState<BlogStatus>("draft");
   const [tagsInput, setTagsInput] = useState("");
   const [image, setImage] = useState<ImagePickerAsset | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [fetching, setFetching] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -91,10 +121,47 @@ export default function CreateBlogPage() {
     void loadCategories();
   }, [loadCategories]);
 
-  const updateField = <T extends FieldName>(
-    field: T,
-    value: T extends "title" | "description" | "category" ? string : never,
-    setter: (value: string) => void,
+  useEffect(() => {
+    if (!slug) {
+      setFetching(false);
+      setError("Blog not found.");
+      return;
+    }
+
+    let cancelled = false;
+    setFetching(true);
+    setError(null);
+
+    blogApi
+      .getBySlug(slug)
+      .then((response) => {
+        if (cancelled) return;
+        const fetchedBlog = response.data.result;
+        setBlog(fetchedBlog);
+        setTitle(fetchedBlog.title);
+        setDescription(fetchedBlog.description);
+        setCategory(fetchedBlog.category?._id ?? "");
+        setStatus(
+          fetchedBlog.status === "submitted" ? "submitted" : "draft",
+        );
+        setTagsInput((fetchedBlog.tags ?? []).join(", "));
+      })
+      .catch((requestError: unknown) => {
+        if (!cancelled) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!cancelled) setFetching(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  const updateField = (
+    field: FieldName,
+    value: string,
+    setter: (nextValue: string) => void,
   ) => {
     setter(value);
     setFieldErrors((current) => ({ ...current, [field]: undefined }));
@@ -129,12 +196,12 @@ export default function CreateBlogPage() {
   const handleSubmit = async () => {
     setError(null);
     if (!validate()) return;
-    if (categoriesLoading || categoriesError) {
-      setError("Load the categories before creating your blog.");
+    if (!blog || !slug) {
+      setError("The blog could not be loaded. Go back and try again.");
       return;
     }
-    if (!isAuthenticated || !session) {
-      setError("Please sign in before creating a blog.");
+    if (categoriesLoading || categoriesError || categories.length === 0) {
+      setError("Load the available categories before saving this blog.");
       return;
     }
 
@@ -146,7 +213,6 @@ export default function CreateBlogPage() {
       formData.append("category", category);
       formData.append("status", status);
       formData.append("tags", tagsInput.trim());
-      formData.append("author", session.user.id);
 
       if (image) {
         formData.append(
@@ -159,9 +225,12 @@ export default function CreateBlogPage() {
         );
       }
 
-      await blogApi.create(formData);
-      showToast("Blog created successfully.");
-      router.replace("/profile");
+      const response = await blogApi.updateBySlug(slug, formData);
+      showToast("Blog updated successfully.");
+      router.replace({
+        pathname: "/blog",
+        params: { slug: response.data.result.slug },
+      });
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     } finally {
@@ -172,25 +241,30 @@ export default function CreateBlogPage() {
   const handleCancel = () => {
     if (router.canGoBack()) {
       router.back();
+    } else if (slug) {
+      router.replace({
+        pathname: "/blog/[slug]",
+        params: { slug },
+      });
     } else {
       router.replace("/blog");
     }
   };
 
-  if (isInitializing) {
+  if (isInitializing || fetching) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
         <Navbar />
         <View style={[styles.centered, { padding: spacing.xl }]}>
           <ThemedText variant="bodySmall" semantic="muted">
-            Checking your account…
+            {isInitializing ? "Checking your account..." : "Loading blog..."}
           </ThemedText>
         </View>
       </ThemedSafeAreaView>
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !session) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
         <Navbar />
@@ -201,14 +275,7 @@ export default function CreateBlogPage() {
             color={colors.mutedForeground}
           />
           <ThemedText variant="heading5" style={styles.centerText}>
-            Sign in to write a blog
-          </ThemedText>
-          <ThemedText
-            variant="bodySmall"
-            semantic="muted"
-            style={styles.centerText}
-          >
-            Sign in to create and manage your stories.
+            Sign in to edit this blog
           </ThemedText>
           <ThemedButton
             title="Sign in"
@@ -218,6 +285,58 @@ export default function CreateBlogPage() {
       </ThemedSafeAreaView>
     );
   }
+
+  if (error && !blog) {
+    return (
+      <ThemedSafeAreaView edges={["top", "left", "right"]}>
+        <Navbar />
+        <View style={[styles.centered, { padding: spacing.xl, gap: spacing.md }]}>
+          <ThemedText variant="heading5" style={styles.centerText}>
+            Unable to load blog
+          </ThemedText>
+          <ThemedText
+            variant="bodySmall"
+            semantic="muted"
+            style={styles.centerText}
+          >
+            {error}
+          </ThemedText>
+          <ThemedButton
+            title="Go back"
+            variant="outlined"
+            onPress={handleCancel}
+          />
+        </View>
+      </ThemedSafeAreaView>
+    );
+  }
+
+  if (!blog) return null;
+
+  if (blog.author?._id !== session.user.id) {
+    return (
+      <ThemedSafeAreaView edges={["top", "left", "right"]}>
+        <Navbar />
+        <View style={[styles.centered, { padding: spacing.xl, gap: spacing.md }]}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={38}
+            color={colors.mutedForeground}
+          />
+          <ThemedText variant="heading5" style={styles.centerText}>
+            You cannot edit this blog
+          </ThemedText>
+          <ThemedButton
+            title="View blog"
+            variant="outlined"
+            onPress={handleCancel}
+          />
+        </View>
+      </ThemedSafeAreaView>
+    );
+  }
+
+  const currentImageUri = getImageUri(blog.image);
 
   return (
     <ThemedSafeAreaView edges={["top", "left", "right"]}>
@@ -237,14 +356,14 @@ export default function CreateBlogPage() {
             WRITE
           </ThemedText>
           <ThemedText variant="heading2" style={{ marginTop: spacing.xs }}>
-            Create new blog
+            Edit blog
           </ThemedText>
           <ThemedText
             variant="bodySmall"
             semantic="muted"
             style={{ marginTop: spacing.xs }}
           >
-            Share your story with the community.
+            Update your blog post below.
           </ThemedText>
         </View>
 
@@ -272,25 +391,6 @@ export default function CreateBlogPage() {
               </View>
             ) : null}
 
-            <FormField label="Author">
-              <View
-                style={[
-                  styles.readOnlyField,
-                  {
-                    backgroundColor: colors.muted,
-                    borderColor: colors.border,
-                    borderRadius: radii.md,
-                    minHeight: 48,
-                    paddingHorizontal: spacing.md,
-                  },
-                ]}
-              >
-                <ThemedText variant="bodySmall" semantic="muted">
-                  {session?.user.name ?? "Unknown"}
-                </ThemedText>
-              </View>
-            </FormField>
-
             <FormField
               label="Title"
               required
@@ -312,7 +412,7 @@ export default function CreateBlogPage() {
               label="Description"
               required
               error={fieldErrors.description}
-              hint="Write at least 20 characters. Separate paragraphs with a blank line."
+              hint="Write at least 20 characters."
             >
               <RichTextEditor
                 id="blog-description"
@@ -357,7 +457,9 @@ export default function CreateBlogPage() {
                   accessibilityLabel="Blog category"
                   value={category}
                   placeholder={
-                    categoriesLoading ? "Loading categories..." : "Select a category"
+                    categoriesLoading
+                      ? "Loading categories..."
+                      : "Select a category"
                   }
                   disabled={categoriesLoading || submitting}
                   options={categories.map((item) => ({
@@ -399,16 +501,47 @@ export default function CreateBlogPage() {
               />
             </FormField>
 
-            <FormField label="Cover image" hint="Choose an image from your library.">
-              <FormImagePicker
-                image={image}
-                onChange={(selectedImage) => {
-                  setImage(selectedImage);
-                  setError(null);
-                }}
-                onError={(message) => setError(message)}
-                disabled={submitting}
-              />
+            <FormField
+              label="Cover image"
+              hint="Choose a new image to replace the current cover."
+            >
+              {image ? (
+                <FormImagePicker
+                  image={image}
+                  onChange={setImage}
+                  onError={setError}
+                  disabled={submitting}
+                />
+              ) : (
+                <View style={{ gap: spacing.sm }}>
+                  {currentImageUri && !imageFailed ? (
+                    <View style={styles.currentImageContainer}>
+                      <Image
+                        source={{ uri: currentImageUri }}
+                        accessibilityLabel="Current cover image"
+                        resizeMode="cover"
+                        onError={() => setImageFailed(true)}
+                        style={[
+                          styles.currentImage,
+                          {
+                            backgroundColor: colors.muted,
+                            borderRadius: radii.md,
+                          },
+                        ]}
+                      />
+                      <ThemedText variant="caption" semantic="muted">
+                        Current cover image
+                      </ThemedText>
+                    </View>
+                  ) : null}
+                  <FormImagePicker
+                    image={null}
+                    onChange={setImage}
+                    onError={setError}
+                    disabled={submitting}
+                  />
+                </View>
+              )}
             </FormField>
 
             <View
@@ -429,9 +562,9 @@ export default function CreateBlogPage() {
                 style={styles.actionButton}
               />
               <ThemedButton
-                title={status === "draft" ? "Save draft" : "Submit blog"}
+                title="Save changes"
                 loading={submitting}
-                loadingText="Creating..."
+                loadingText="Saving..."
                 onPress={() => void handleSubmit()}
                 style={styles.actionButton}
               />
@@ -459,9 +592,13 @@ const styles = StyleSheet.create({
   errorBanner: {
     borderWidth: StyleSheet.hairlineWidth,
   },
-  readOnlyField: {
-    borderWidth: StyleSheet.hairlineWidth,
-    justifyContent: "center",
+  currentImageContainer: {
+    alignSelf: "flex-start",
+    gap: 6,
+  },
+  currentImage: {
+    height: 160,
+    width: 160,
   },
   actions: {
     borderTopWidth: StyleSheet.hairlineWidth,
