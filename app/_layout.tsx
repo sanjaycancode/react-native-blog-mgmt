@@ -1,12 +1,13 @@
 import "react-native-reanimated";
 
-import { useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { MD3DarkTheme, MD3LightTheme, PaperProvider } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ThemeProvider, useTheme } from "@/constants/theme";
@@ -29,16 +30,47 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ThemeProvider>
-            <ToastProvider>
-              <AuthProvider>
-                <RootNavigator />
-              </AuthProvider>
-            </ToastProvider>
+            <PaperThemeProvider>
+              <ToastProvider>
+                <AuthProvider>
+                  <RootNavigator />
+                </AuthProvider>
+              </ToastProvider>
+            </PaperThemeProvider>
           </ThemeProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>
     </ReactQueryProvider>
   );
+}
+
+function PaperThemeProvider({ children }: { children: ReactNode }) {
+  const { colors, isDark } = useTheme();
+  const baseTheme = isDark ? MD3DarkTheme : MD3LightTheme;
+
+  const theme = {
+    ...baseTheme,
+    dark: isDark,
+    colors: {
+      ...baseTheme.colors,
+      primary: colors.primary,
+      onPrimary: colors.primaryForeground,
+      primaryContainer: colors.secondary,
+      onPrimaryContainer: colors.secondaryForeground,
+      secondary: colors.accent,
+      onSecondary: colors.foreground,
+      background: colors.background,
+      onBackground: colors.foreground,
+      surface: colors.card,
+      onSurface: colors.foreground,
+      surfaceVariant: colors.muted,
+      onSurfaceVariant: colors.mutedForeground,
+      outline: colors.border,
+      outlineVariant: colors.divider,
+    },
+  };
+
+  return <PaperProvider theme={theme}>{children}</PaperProvider>;
 }
 
 function RootNavigator() {
