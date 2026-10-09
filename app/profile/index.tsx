@@ -816,7 +816,7 @@ export default function ProfileScreen() {
                         isFeatured: String(blog.status) === "featured",
                         image: blog.image,
                       }}
-                      onPress={() => void router.push(`/blogs/${blog.slug}`)}
+                      onPress={() => void router.push(`/blog/${blog.slug}`)}
                     />
                     <View
                       style={[
