@@ -1,7 +1,7 @@
-import { type ReactNode,useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Modal, Pressable, StyleSheet, View } from "react-native";
 
-import { useRouter } from "expo-router";
+import { type Href,usePathname, useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -24,11 +24,31 @@ type AdminShellProps = {
 };
 
 const navigationItems = [
-  { label: "Overview", icon: "grid-outline", available: true },
-  { label: "Blogs", icon: "document-text-outline", available: false },
-  { label: "Categories", icon: "pricetags-outline", available: false },
-  { label: "Users", icon: "people-outline", available: false },
-  { label: "Profile", icon: "person-circle-outline", available: false },
+  { label: "Overview", icon: "grid-outline", href: "/admin", available: true },
+  {
+    label: "Blogs",
+    icon: "document-text-outline",
+    href: "/admin/blog",
+    available: true,
+  },
+  {
+    label: "Categories",
+    icon: "pricetags-outline",
+    href: undefined,
+    available: true,
+  },
+  {
+    label: "Users",
+    icon: "people-outline",
+    href: undefined,
+    available: true,
+  },
+  {
+    label: "Profile",
+    icon: "person-circle-outline",
+    href: undefined,
+    available: true,
+  },
 ] as const;
 
 export function AdminShell({
@@ -37,6 +57,7 @@ export function AdminShell({
   onLogout,
 }: AdminShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { colors, spacing, radii } = useTheme();
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -61,8 +82,7 @@ export function AdminShell({
           onPress={() => setDrawerVisible(true)}
         />
         <Appbar.Content
-          title="Admin"
-          subtitle={userName ? `Welcome, ${userName}` : "Administration"}
+          title={userName ? `Welcome, ${userName}` : "Administration"}
         />
         <Appbar.Action
           accessibilityLabel="Log out"
@@ -134,6 +154,9 @@ export function AdminShell({
                   disabled={!item.available}
                   onPress={() => {
                     closeDrawer();
+                    if (item.available) {
+                      router.replace(item.href as Href);
+                    }
                   }}
                   style={({ pressed }) => [
                     styles.navigationItem,
@@ -141,8 +164,11 @@ export function AdminShell({
                       borderRadius: radii.md,
                       paddingHorizontal: spacing.md,
                       paddingVertical: spacing.md,
-                      backgroundColor: pressed
-                        ? colors.muted
+                      backgroundColor:
+                        pathname === item.href
+                          ? colors.secondary
+                          : pressed
+                            ? colors.muted
                         : item.available
                           ? colors.secondary
                           : "transparent",

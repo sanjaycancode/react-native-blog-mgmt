@@ -13,10 +13,10 @@ import {
   Button,
   Card,
   Chip,
-  ProgressBar,
   Text,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Circle, Path } from "react-native-svg";
 
 import { AdminShell } from "@/components/admin/AdminShell";
 
@@ -101,7 +101,7 @@ export default function AdminOverview() {
     }
 
     void loadDashboard();
-  }, [isAdmin, isAuthenticated, isInitializing, loadDashboard, router]);
+  }, [user,isAdmin, isInitializing, loadDashboard, router]);
 
   const stats = useMemo<DashboardStats>(
     () => ({
@@ -251,8 +251,8 @@ export default function AdminOverview() {
 
             <View style={{ gap: spacing.md }}>
               <Text variant="titleLarge">Analytics</Text>
-              <ChartCard title="Blogs per category" entries={blogsByCategory} />
-              <ChartCard title="Blogs by status" entries={blogsByStatus} />
+              <CategoryDonutChart data={blogsByCategory} />
+              <StatusBarChart data={blogsByStatus} />
             </View>
 
             <View style={{ gap: spacing.md }}>
@@ -323,57 +323,274 @@ function StatCard({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ChartCard({
-  title,
-  entries,
-}: {
-  title: string;
-  entries: BarEntry[];
-}) {
-  const { colors, spacing, radii } = useTheme();
-  const maxValue = Math.max(...entries.map((entry) => entry.value), 1);
+function CategoryDonutChart({ data }: { data: BarEntry[] }) {
+  const { colors, spacing } = useTheme();
+  const size = 176;
+  const stroke = 22;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const total = data.reduce((sum, entry) => sum + entry.value, 0);
+  const palette = [
+    colors.primary,
+    colors.accent,
+    colors.secondaryForeground,
+    colors.primaryHover,
+    colors.mutedForeground,
+  ];
+
+  let offset = 0;
+  const segments = data.map((entry, index) => {
+    const length = total > 0 ? (entry.value / total) * circumference : 0;
+    const segment = {
+      ...entry,
+      color: palette[index % palette.length],
+      length,
+      offset,
+    };
+    offset += length;
+    return segment;
+  });
 
   return (
     <Card mode="outlined" style={{ backgroundColor: colors.card }}>
       <Card.Content style={{ gap: spacing.md }}>
-        <Text variant="titleMedium">{title}</Text>
-        {entries.length === 0 ? (
+        <Text variant="titleMedium">Blogs per category</Text>
+        {data.length === 0 ? (
           <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
             No data available.
           </Text>
         ) : (
-          entries.map((entry) => (
-            <View
-              key={entry.label}
-              style={[styles.chartRow, { gap: spacing.sm }]}
-            >
-              <Text
-                variant="bodySmall"
-                numberOfLines={1}
-                style={[styles.chartLabel, { color: colors.foreground }]}
-              >
-                {entry.label}
-              </Text>
-              <ProgressBar
-                progress={entry.value / maxValue}
-                color={colors.primary}
-                style={[
-                  styles.progress,
-                  {
-                    backgroundColor: colors.muted,
-                    height: spacing.xs,
-                    borderRadius: radii.full,
-                  },
-                ]}
-              />
-              <Text
-                variant="labelMedium"
-                style={[styles.chartValue, { color: colors.mutedForeground }]}
-              >
-                {entry.value}
-              </Text>
+          <>
+            <View style={[styles.donutWrap, { width: size, height: size }]}>
+              <Svg width={size} height={size}>
+                <Circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  fill="none"
+                  stroke={colors.muted}
+                  strokeWidth={stroke}
+                />
+                {segments.map((segment) =>
+                  segment.length > 0 ? (
+                    <Path
+                      key={segment.label}
+                      d={getDonutSegmentPath(
+                        segment.offset,
+                        segment.length,
+                        circumference,
+                        size / 2,
+                        radius + stroke / 2,
+                        radius - stroke / 2,
+                      )}
+                      fill={segment.color}
+                    />
+                  ) : null,
+                )}
+              </Svg>
+              <View style={styles.donutCenter} pointerEvents="none">
+                <Text variant="headlineSmall">{total}</Text>
+                <Text
+                  variant="labelSmall"
+                  style={{ color: colors.mutedForeground }}
+                >
+                  blogs
+                </Text>
+              </View>
             </View>
-          ))
+            <View style={{ gap: spacing.sm }}>
+              {segments.map((segment) => (
+                <View
+                  key={segment.label}
+                  style={[styles.legendRow, { gap: spacing.sm }]}
+                >
+                  <View
+                    style={[
+                      styles.legendDot,
+                      { backgroundColor: segment.color },
+                    ]}
+                  />
+                  <Text
+                    variant="bodySmall"
+                    numberOfLines={1}
+                    style={[styles.legendLabel, { color: colors.foreground }]}
+                  >
+                    {segment.label}
+                  </Text>
+                  <Text
+                    variant="labelMedium"
+                    style={{ color: colors.mutedForeground }}
+                  >
+                    {segment.value}
+                  </Text>
+                  <Text
+                    variant="labelSmall"
+                    style={[styles.legendPercent, { color: colors.mutedForeground }]}
+                  >
+                    {total > 0
+                      ? `${Math.round((segment.value / total) * 100)}%`
+                      : "0%"}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+      </Card.Content>
+    </Card>
+  );
+}
+
+function getDonutSegmentPath(
+  offset: number,
+  length: number,
+  circumference: number,
+  center: number,
+  outerRadius: number,
+  innerRadius: number,
+) {
+  const startAngle = (offset / circumference) * Math.PI * 2 - Math.PI / 2;
+  const sweepAngle = (length / circumference) * Math.PI * 2;
+  const point = (angle: number, radius: number) => ({
+    x: center + Math.cos(angle) * radius,
+    y: center + Math.sin(angle) * radius,
+  });
+  const outerStart = point(startAngle, outerRadius);
+  const innerStart = point(startAngle, innerRadius);
+
+  if (sweepAngle >= Math.PI * 2 - 0.0001) {
+    const outerMid = point(startAngle + Math.PI, outerRadius);
+    const innerMid = point(startAngle + Math.PI, innerRadius);
+    return [
+      `M ${outerStart.x} ${outerStart.y}`,
+      `A ${outerRadius} ${outerRadius} 0 1 1 ${outerMid.x} ${outerMid.y}`,
+      `A ${outerRadius} ${outerRadius} 0 1 1 ${outerStart.x} ${outerStart.y}`,
+      `L ${innerStart.x} ${innerStart.y}`,
+      `A ${innerRadius} ${innerRadius} 0 1 0 ${innerMid.x} ${innerMid.y}`,
+      `A ${innerRadius} ${innerRadius} 0 1 0 ${innerStart.x} ${innerStart.y}`,
+      "Z",
+    ].join(" ");
+  }
+
+  const endAngle = startAngle + sweepAngle;
+  const outerEnd = point(endAngle, outerRadius);
+  const innerEnd = point(endAngle, innerRadius);
+  const largeArc = sweepAngle > Math.PI ? 1 : 0;
+
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y}`,
+    "Z",
+  ].join(" ");
+}
+
+function StatusBarChart({ data }: { data: BarEntry[] }) {
+  const { colors, spacing } = useTheme();
+  const chartHeight = 148;
+  const barMaxHeight = chartHeight - 24;
+  const maxValue = Math.max(1, ...data.map((entry) => entry.value));
+  const ticks = [1, 0.75, 0.5, 0.25, 0];
+
+  return (
+    <Card mode="outlined" style={{ backgroundColor: colors.card }}>
+      <Card.Content style={{ gap: spacing.md }}>
+        <Text variant="titleMedium">Blogs by status</Text>
+        {data.length === 0 ? (
+          <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
+            No data available.
+          </Text>
+        ) : (
+          <View style={{ gap: spacing.xs }}>
+            <View style={styles.barChartRow}>
+              <View
+                style={[
+                  styles.barAxis,
+                  { height: chartHeight, marginRight: spacing.xs },
+                ]}
+              >
+                {ticks.map((tick) => (
+                  <Text
+                    key={tick}
+                    variant="labelSmall"
+                    style={{ color: colors.mutedForeground }}
+                  >
+                    {Math.round(maxValue * tick)}
+                  </Text>
+                ))}
+              </View>
+              <View
+                style={[
+                  styles.barPlot,
+                  { height: chartHeight, borderBottomColor: colors.border },
+                ]}
+              >
+                {ticks.slice(0, -1).map((tick) => (
+                  <View
+                    key={tick}
+                    pointerEvents="none"
+                    style={[
+                      styles.barGridLine,
+                      {
+                        top: `${(1 - tick) * 100}%`,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  />
+                ))}
+                <View style={styles.barColumns}>
+                  {data.map((entry) => {
+                    const barHeight =
+                      (entry.value / maxValue) * barMaxHeight;
+                    return (
+                      <View key={entry.label} style={styles.barColumn}>
+                        {entry.value > 0 ? (
+                          <Text
+                            variant="labelSmall"
+                            style={{
+                              color: colors.foreground,
+                              marginBottom: spacing.xs,
+                            }}
+                          >
+                            {entry.value}
+                          </Text>
+                        ) : null}
+                        <View
+                          style={[
+                            styles.bar,
+                            {
+                              height: barHeight,
+                              minHeight: entry.value > 0 ? 3 : 0,
+                              maxWidth: 36,
+                              backgroundColor: colors.primary,
+                              borderTopLeftRadius: spacing.xs,
+                              borderTopRightRadius: spacing.xs,
+                            },
+                          ]}
+                        />
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+            <View style={styles.barLabels}>
+              {data.map((entry) => (
+                <Text
+                  key={entry.label}
+                  numberOfLines={1}
+                  variant="labelSmall"
+                  style={[
+                    styles.barLabel,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  {entry.label}
+                </Text>
+              ))}
+            </View>
+          </View>
         )}
       </Card.Content>
     </Card>
@@ -392,6 +609,75 @@ const styles = StyleSheet.create({
   statCard: {
     width: "48.5%",
   },
+  donutWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+  },
+  donutCenter: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  legendRow: {
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendLabel: {
+    flex: 1,
+  },
+  legendPercent: {
+    minWidth: 40,
+    textAlign: "right",
+  },
+  barChartRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+  },
+  barAxis: {
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  barPlot: {
+    flex: 1,
+    justifyContent: "flex-end",
+    borderBottomWidth: 1,
+    position: "relative",
+  },
+  barGridLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  barColumns: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-around",
+  },
+  barColumn: {
+    flex: 1,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  bar: {
+    width: "58%",
+  },
+  barLabels: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  barLabel: {
+    flex: 1,
+    textAlign: "center",
+  },
   loading: {
     alignItems: "center",
     justifyContent: "center",
@@ -409,20 +695,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-  },
-  chartRow: {
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  chartLabel: {
-    width: 96,
-    textTransform: "capitalize",
-  },
-  progress: {
-    flex: 1,
-  },
-  chartValue: {
-    minWidth: 24,
-    textAlign: "right",
   },
 });
