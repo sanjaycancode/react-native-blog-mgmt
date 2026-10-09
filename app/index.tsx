@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Linking,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,12 +9,12 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import BlogCard from "@/components/BlogCard";
-import Footer from "@/components/Footer";
-import Navbar from "@/components/NavBar";
+import BottomNav from "@/components/NavBar";
+import HomeHeader from "@/components/home/HomeHeader";
+import GridFeed, { GridSkeleton } from "@/components/profile/GridFeed";
 import Button from "@/components/ThemedButton";
 import Card from "@/components/ThemedCard";
 
@@ -25,34 +23,34 @@ import { categoryApi } from "@/api/services/category";
 
 import { useTheme } from "@/constants/theme";
 
+// ⚠️ Same auth hook your Navbar used
+import { useAuth } from "@/context/AuthContext";
+
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import type { Blog, Category } from "@/types";
 
-const BLOG_BASE_URL = "http://localhost:8081/";
-
 export default function HomeScreen() {
+  const router = useRouter();
   const { colors, typography, spacing, radii } = useTheme();
+  const { session } = useAuth();
+
+  const user = session?.user;
+  const isLoggedIn = !!user;
+  const isAdmin = user?.role === "admin";
+  const firstName = (user as { name?: string } | undefined)?.name
+    ?.trim()
+    .split(" ")[0];
+
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isBlogsLoading, setIsBlogsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [blogsError, setBlogsError] = useState<string | null>(null);
-  const router = useRouter();
 
-  const openWebsite = useCallback(async (path: string) => {
-    try {
-      await Linking.openURL(`${BLOG_BASE_URL}${path}`);
-    } catch {
-      Alert.alert(
-        "Unable to open page",
-        "Please check your connection and try again.",
-      );
-    }
-  }, []);
-
-  const findBlogs = useCallback(async () => {
-    setIsBlogsLoading(true);
+  const findBlogs = useCallback(async (silent = false) => {
+    if (!silent) setIsBlogsLoading(true);
     setBlogsError(null);
     const [blogsResult, categoriesResult] = await Promise.allSettled([
       blogApi.list({ page: 1, limit: 6 }),
@@ -81,6 +79,12 @@ export default function HomeScreen() {
     void findBlogs();
   }, [findBlogs]);
 
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await findBlogs(true);
+    setIsRefreshing(false);
+  }, [findBlogs]);
+
   const categoryOptions = [
     "All",
     ...categories.map((category) => category.title),
@@ -95,218 +99,255 @@ export default function HomeScreen() {
       edges={["top", "left", "right"]}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <Navbar />
+      <HomeHeader />
 
       <ScrollView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={styles.contentContainer}
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={{ paddingBottom: spacing.xl }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => void handleRefresh()}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
-        {/* Hero Section */}
-        <View style={[styles.hero, { padding: spacing.xl }]}>
+        {/* Hero: changes with login state */}
+        <View
+          style={{
+            paddingHorizontal: spacing.xl,
+            paddingTop: spacing.lg,
+            paddingBottom: spacing.md,
+          }}
+        >
           <Text
-            style={[
-              styles.eyebrow,
-              {
-                color: colors.primary,
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.bold,
-                marginBottom: spacing.xs,
-              },
-            ]}
+            style={{
+              color: colors.foreground,
+              fontSize: typography.sizes["3xl"],
+              fontWeight: typography.weights.heavy,
+              lineHeight: 38,
+              letterSpacing: -0.5,
+            }}
           >
-            IDEAS WORTH SHARING
+            {isLoggedIn ? (
+              <>
+                Welcome back
+                {firstName ? "," : "."}
+                {firstName ? (
+                  <Text style={{ color: colors.primary }}> {firstName}.</Text>
+                ) : null}
+              </>
+            ) : (
+              <>
+                Publish your passions,{" "}
+                <Text style={{ color: colors.primary }}>your way.</Text>
+              </>
+            )}
           </Text>
 
           <Text
-            style={[
-              styles.heroTitle,
-              {
-                color: colors.foreground,
-                fontSize: typography.sizes["3xl"],
-                fontWeight: typography.weights.heavy,
-                lineHeight: 38,
-              },
-            ]}
+            style={{
+              color: colors.mutedForeground,
+              fontSize: typography.sizes.base,
+              lineHeight: 24,
+              marginTop: spacing.sm,
+            }}
           >
-            Publish your passions,{" "}
-            <Text style={{ color: colors.primary }}>your way.</Text>
-          </Text>
-
-          <Text
-            style={[
-              styles.heroSubtitle,
-              {
-                color: colors.mutedForeground,
-                fontSize: typography.sizes.base,
-                lineHeight: 24,
-                marginTop: spacing.md,
-              },
-            ]}
-          >
-            Discover thoughtful writing from a growing Nepali community. Read
-            something useful, then add your own voice.
+            {isLoggedIn
+              ? "Read something new today, or pick up where you left off."
+              : "Thoughtful writing from a growing Nepali community. Read something useful, then add your own voice."}
           </Text>
 
           <View
-            style={[
-              styles.heroActions,
-              { marginTop: spacing.xl, gap: spacing.md },
-            ]}
+            style={{
+              flexDirection: "row",
+              gap: spacing.md,
+              marginTop: spacing.lg,
+            }}
           >
-            <Button
-              title="Browse Blogs"
-              variant="filled"
-              onPress={() => void router.push("/blog")}
-              style={styles.heroButton}
-            />
-            <Button
-              title="Join the community"
-              variant="outlined"
-              onPress={() => void router.push("/register")}
-              style={styles.heroButton}
-            />
-          </View>
-        </View>
-
-        {/* Category Filter Chips */}
-        <View style={{ marginVertical: spacing.md }}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.categoryScroll,
-              { paddingHorizontal: spacing.xl },
-            ]}
-          >
-            {categoryOptions.map((cat) => {
-              const isSelected = selectedCategory === cat;
-              return (
-                <Pressable
-                  key={cat}
-                  onPress={() => setSelectedCategory(cat)}
-                  style={[
-                    styles.categoryChip,
-                    {
-                      backgroundColor: isSelected
-                        ? colors.primary
-                        : colors.card,
-                      borderColor: isSelected ? colors.primary : colors.border,
-                      borderRadius: radii.full,
-                      paddingHorizontal: spacing.lg,
-                      paddingVertical: spacing.sm,
-                      marginRight: spacing.sm,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: isSelected
-                        ? colors.primaryForeground
-                        : colors.foreground,
-                      fontSize: typography.sizes.xs,
-                      fontWeight: isSelected
-                        ? typography.weights.bold
-                        : typography.weights.medium,
-                    }}
-                  >
-                    {cat}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Latest Stories Section */}
-        <View
-          style={[
-            styles.section,
-            { paddingHorizontal: spacing.xl, marginTop: spacing.lg },
-          ]}
-        >
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text
-                style={[
-                  styles.eyebrow,
-                  {
-                    color: colors.primary,
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.bold,
-                    marginBottom: spacing.xs,
-                  },
-                ]}
-              >
-                FRESH FROM THE COMMUNITY
-              </Text>
-              <Text
-                style={[
-                  styles.sectionTitle,
-                  {
-                    color: colors.foreground,
-                    fontSize: typography.sizes["2xl"],
-                    fontWeight: typography.weights.heavy,
-                  },
-                ]}
-              >
-                Latest stories
-              </Text>
-            </View>
-
-            <Pressable
-              onPress={() => void router.push("/blog")}
-              style={styles.linkRow}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.semibold,
-                }}
-              >
-                View all
-              </Text>
-              <Ionicons name="arrow-forward" size={14} color={colors.primary} />
-            </Pressable>
-          </View>
-
-          {/* Story List */}
-          <View style={{ marginTop: spacing.lg }}>
-            {isBlogsLoading ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : blogsError ? (
-              <Text
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: typography.sizes.sm,
-                }}
-              >
-                Could not load stories: {blogsError}
-              </Text>
-            ) : filteredBlogs.length > 0 ? (
-              filteredBlogs.map((blog) => (
-                <BlogCard
-                  key={blog._id}
-                  blog={blog}
-                  onPress={() => void router.push(`/blog/${blog.slug}`)}
+            {isLoggedIn ? (
+              <>
+                <Button
+                  title="Start writing"
+                  variant="filled"
+                  onPress={() => void router.push("/blog/create")}
+                  style={{ flex: 1 }}
                 />
-              ))
+                <Button
+                  title={isAdmin ? "Dashboard" : "Your profile"}
+                  variant="outlined"
+                  onPress={() =>
+                    void router.push(isAdmin ? "/admin" : "/profile")
+                  }
+                  style={{ flex: 1 }}
+                />
+              </>
             ) : (
-              <Text
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: typography.sizes.sm,
-                }}
-              >
-                No stories found in this category.
-              </Text>
+              <>
+                <Button
+                  title="Browse blogs"
+                  variant="filled"
+                  onPress={() => void router.push("/blog")}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  title="Join us"
+                  variant="outlined"
+                  onPress={() => void router.push("/register")}
+                  style={{ flex: 1 }}
+                />
+              </>
             )}
           </View>
         </View>
 
-        {/* Write CTA Section */}
-        <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.md }}>
+        {/* Category chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.xl,
+            paddingVertical: spacing.md,
+          }}
+        >
+          {categoryOptions.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: isSelected ? colors.primary : colors.card,
+                    borderColor: isSelected ? colors.primary : colors.border,
+                    borderRadius: radii.full,
+                    paddingHorizontal: spacing.lg,
+                    paddingVertical: spacing.sm,
+                    marginRight: spacing.sm,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: isSelected
+                      ? colors.primaryForeground
+                      : colors.foreground,
+                    fontSize: typography.sizes.xs,
+                    fontWeight: isSelected
+                      ? typography.weights.bold
+                      : typography.weights.medium,
+                  }}
+                >
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {/* Latest stories */}
+        <View
+          style={[
+            styles.sectionHeader,
+            { paddingHorizontal: spacing.xl, marginTop: spacing.sm },
+          ]}
+        >
+          <Text
+            style={{
+              color: colors.foreground,
+              fontSize: typography.sizes["2xl"],
+              fontWeight: typography.weights.heavy,
+              letterSpacing: -0.5,
+            }}
+          >
+            Latest stories
+          </Text>
+          <Pressable
+            onPress={() => void router.push("/blog")}
+            accessibilityRole="link"
+            hitSlop={8}
+            style={styles.linkRow}
+          >
+            <Text
+              style={{
+                color: colors.primary,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.semibold,
+              }}
+            >
+              View all
+            </Text>
+            <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+          </Pressable>
+        </View>
+
+        <View style={{ marginTop: spacing.xs }}>
+          {isBlogsLoading ? (
+            <GridSkeleton count={4} />
+          ) : blogsError ? (
+            <View style={[styles.stateBox, { padding: spacing.xl }]}>
+              <Ionicons
+                name="cloud-offline-outline"
+                size={28}
+                color={colors.mutedForeground}
+              />
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: typography.sizes.base,
+                  fontWeight: typography.weights.bold,
+                  marginTop: spacing.sm,
+                }}
+              >
+                Couldn't load stories
+              </Text>
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: typography.sizes.sm,
+                  textAlign: "center",
+                  marginTop: 2,
+                  marginBottom: spacing.md,
+                }}
+              >
+                {blogsError}
+              </Text>
+              <Button
+                title="Try again"
+                variant="outlined"
+                onPress={() => void findBlogs()}
+              />
+            </View>
+          ) : filteredBlogs.length > 0 ? (
+            <GridFeed
+              // Remount on category change so cards animate in again.
+              key={selectedCategory}
+              items={filteredBlogs}
+              type="posts"
+              showAuthor
+              onPressItem={(blog) => void router.push(`/blog/${blog.slug}`)}
+            />
+          ) : (
+            <View style={[styles.stateBox, { padding: spacing.xl }]}>
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: typography.sizes.sm,
+                }}
+              >
+                No stories in this category yet.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Bottom call to action: also depends on login state */}
+        <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.lg }}>
           <Card
             style={{
               backgroundColor: colors.secondary,
@@ -323,7 +364,9 @@ export default function HomeScreen() {
                 textAlign: "center",
               }}
             >
-              Share your story with the world
+              {isLoggedIn
+                ? "Got something to say?"
+                : "Share your story with the world"}
             </Text>
             <Text
               style={{
@@ -335,80 +378,68 @@ export default function HomeScreen() {
                 marginBottom: spacing.lg,
               }}
             >
-              Join hundreds of Nepali creators, thinkers, and builders writing
-              everyday.
+              {isLoggedIn
+                ? "Start a draft now. It stays private until you publish."
+                : "Join hundreds of Nepali creators, thinkers, and builders writing every day."}
             </Text>
             <Button
-              title="Create Your Post"
+              title={isLoggedIn ? "Write a blog" : "Create your account"}
               variant="filled"
-              onPress={() => void router.push("/register")}
+              onPress={() =>
+                void router.push(isLoggedIn ? "/blog/create" : "/register")
+              }
               style={{ width: "100%" }}
             />
+            {!isLoggedIn && (
+              <Pressable
+                onPress={() => void router.push("/login")}
+                accessibilityRole="link"
+                hitSlop={8}
+                style={{ marginTop: spacing.md }}
+              >
+                <Text
+                  style={{
+                    color: colors.mutedForeground,
+                    fontSize: typography.sizes.sm,
+                  }}
+                >
+                  Already have an account?{" "}
+                  <Text
+                    style={{
+                      color: colors.primary,
+                      fontWeight: typography.weights.semibold,
+                    }}
+                  >
+                    Log in
+                  </Text>
+                </Text>
+              </Pressable>
+            )}
           </Card>
         </View>
-
-        <Footer />
       </ScrollView>
+
+      <BottomNav />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 20,
-  },
-  hero: {},
-  eyebrow: {
-    letterSpacing: 1,
-  },
-  heroTitle: {
-    letterSpacing: -0.5,
-  },
-  heroSubtitle: {},
-  heroActions: {
-    flexDirection: "column",
-  },
-  heroButton: {
-    width: "100%",
-  },
-  heroCard: {
-    position: "relative",
-    overflow: "hidden",
-  },
-  heroCircle: {
-    position: "absolute",
-    right: -20,
-    top: -20,
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
-  heroCardTitle: {
-    letterSpacing: -0.3,
-  },
-  heroCardDescription: {},
-  linkRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  categoryScroll: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  categoryChip: {
+  chip: {
     borderWidth: 1,
   },
-  section: {},
   sectionHeader: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
   },
-  sectionTitle: {
-    letterSpacing: -0.5,
+  linkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  stateBox: {
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

@@ -1,308 +1,215 @@
-import React, { useState } from "react";
-import {
-  Alert,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-
-import { useRouter } from "expo-router";
+import { useEffect, type ReactNode } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
+import { usePathname, useRouter } from "expo-router";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/constants/theme";
 
-// ⚠️ Adjust this import to match your auth setup
+// ⚠️ Same auth hook your old Navbar used
 import { useAuth } from "@/context/AuthContext";
 
-import Button from "./ThemedButton";
+const SPRING = { damping: 16, stiffness: 260, mass: 0.7 };
+const TILT_DEG = -12;
 
-export function Navbar() {
-  const { colors, typography, spacing, isDark, toggleTheme } = useTheme();
-  const { session, logout } = useAuth(); // user is null/undefined when logged out
+// The bar stays out of the way on auth screens and in the editor.
+const HIDDEN_ON = ["/login", "/register", "/blog/create"];
+
+/** Wraps any icon with tap-scale feedback and the active dot. */
+function NavButton({
+  active,
+  label,
+  onPress,
+  children,
+}: {
+  active: boolean;
+  label: string;
+  onPress: () => void;
+  children: ReactNode;
+}) {
+  const { colors } = useTheme();
+  const scale = useSharedValue(1);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => (scale.value = withSpring(0.82, SPRING))}
+      onPressOut={() => (scale.value = withSpring(1, SPRING))}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      hitSlop={{ top: 8, bottom: 8 }}
+      style={styles.item}
+    >
+      <Animated.View style={[styles.itemInner, style]}>
+        {children}
+      </Animated.View>
+      <View
+        style={[
+          styles.dot,
+          { backgroundColor: active ? colors.primary : "transparent" },
+        ]}
+      />
+    </Pressable>
+  );
+}
+
+/** The brand logo. Straight and faded when idle, tilted and bold when active. */
+function HomeLogo({ active }: { active: boolean }) {
+  const progress = useSharedValue(active ? 1 : 0);
+
+  useEffect(() => {
+    // Low damping gives the tilt a small, satisfying overshoot.
+    progress.value = withSpring(active ? 1 : 0, {
+      damping: 7,
+      stiffness: 190,
+      mass: 0.8,
+    });
+  }, [active, progress]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.5 + 0.5 * Math.min(Math.max(progress.value, 0), 1),
+    transform: [
+      { rotate: `${TILT_DEG * progress.value}deg` },
+      { scale: 1 + 0.14 * progress.value },
+    ],
+  }));
+
+  return (
+    <Animated.Image
+      source={require("../assets/images/logo.png")}
+      style={[styles.logo, style]}
+      resizeMode="contain"
+    />
+  );
+}
+
+export default function Navbar() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const { session } = useAuth();
+
   const user = session?.user;
   const isLoggedIn = !!user;
 
-  const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
+  if (
+    HIDDEN_ON.some((p) => pathname.startsWith(p)) ||
+    pathname.includes("/edit")
+  ) {
+    return null;
+  }
 
-  const closeMenu = () => setIsOpen(false);
+  const isHome = pathname === "/" || pathname === "/index";
+  const isExplore = pathname === "/blog" || pathname.startsWith("/blog/");
+  const isProfile =
+    pathname.startsWith("/profile") || pathname.startsWith("/admin");
 
-  const goToLogin = () => {
-    closeMenu();
-    router.push("/login");
+  // Top-level sections swap in place so the back stack doesn't pile up.
+  const goTab = (path: string, active: boolean) => {
+    if (!active) void router.replace(path);
   };
 
-  const goToHome = () => {
-    closeMenu();
-    router.replace("/");
+  const goWrite = () =>
+    void router.push(isLoggedIn ? "/blog/create" : "/register");
+  const goProfile = () => {
+    if (!isLoggedIn) return void router.push("/login");
+    goTab(user?.role === "admin" ? "/admin" : "/profile", isProfile);
   };
-  const goToProfile = () => {
-    const user = session?.user
-    closeMenu();
-    if (user?.role === "admin") {
-      router.push("/admin");
-    } else {
-      router.push("/profile");
-    }
-  };
-
-  const handleLogout = async () => {
-    closeMenu();
-    try {
-      await logout();
-      router.replace("/");
-    } catch {
-      Alert.alert("Logout failed", "Please try again.");
-    }
-  };
-
-  const MenuItem = ({
-    label,
-    onPress,
-    active = false,
-  }: {
-    label: string;
-    onPress: () => void;
-    active?: boolean;
-  }) => (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => [
-        styles.menuItem,
-        {
-          backgroundColor: pressed ? colors.muted : "transparent",
-          paddingVertical: spacing.md,
-          paddingHorizontal: spacing.md,
-          borderRadius: 8,
-        },
-      ]}
-    >
-      <Text
-        style={{
-          color: active ? colors.primary : colors.foreground,
-          fontSize: typography.sizes.base,
-          fontWeight: active
-            ? typography.weights.bold
-            : typography.weights.medium,
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
 
   return (
     <View
       style={[
-        styles.container,
-        { backgroundColor: colors.card, borderBottomColor: colors.border },
+        styles.bar,
+        {
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
+          paddingBottom: Math.max(insets.bottom, 8),
+        },
       ]}
+      accessibilityRole="tablist"
     >
-      <View
-        style={[
-          styles.inner,
-          { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-        ]}
+      <NavButton
+        active={isHome}
+        label="Home"
+        onPress={() => goTab("/", isHome)}
       >
-        <Pressable
-          onPress={goToHome}
-          style={styles.brand}
-          accessibilityRole="link"
-        >
-          <View style={styles.logoIcon}>
-            <Image
-              source={require("../assets/images/logo.png")}
-              style={styles.logoImage}
-            />
-          </View>
-          <Text
-            style={[
-              styles.brandText,
-              { color: colors.primary, fontSize: typography.sizes.lg },
-            ]}
-          >
-            Nepal Can <Text style={{ color: colors.foreground }}>Blog</Text>
-          </Text>
-        </Pressable>
+        <HomeLogo active={isHome} />
+      </NavButton>
 
-        <View style={styles.actions}>
-          <Pressable
-            onPress={toggleTheme}
-            style={({ pressed }) => [
-              styles.iconBtn,
-              {
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Toggle theme"
-          >
-            <Ionicons
-              name={isDark ? "sunny-outline" : "moon-outline"}
-              size={18}
-              color={colors.foreground}
-            />
-          </Pressable>
+      <NavButton
+        active={isExplore}
+        label="Explore"
+        onPress={() => goTab("/blog", isExplore)}
+      >
+        <Ionicons
+          name={isExplore ? "search" : "search-outline"}
+          size={26}
+          color={isExplore ? colors.foreground : colors.mutedForeground}
+        />
+      </NavButton>
 
-          <Pressable
-            onPress={() => setIsOpen((open) => !open)}
-            style={({ pressed }) => [
-              styles.iconBtn,
-              {
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={
-              isOpen ? "Close navigation menu" : "Open navigation menu"
-            }
-            accessibilityState={{ expanded: isOpen }}
-          >
-            <Ionicons
-              name={isOpen ? "close" : "menu"}
-              size={20}
-              color={colors.foreground}
-            />
-          </Pressable>
+      {/* Center action: the thing people come here to do */}
+      <NavButton active={false} label="Write a blog" onPress={goWrite}>
+        <View style={[styles.write, { backgroundColor: colors.primary }]}>
+          <Ionicons name="add" size={26} color={colors.primaryForeground} />
         </View>
-      </View>
+      </NavButton>
 
-      {isOpen ? (
-        <View
-          style={[
-            styles.menuDropdown,
-            {
-              backgroundColor: colors.card,
-              borderTopColor: colors.border,
-              padding: spacing.lg,
-            },
-          ]}
-        >
-          <MenuItem label="Home" onPress={goToHome} active />
-          <MenuItem
-            label="Explore"
-            onPress={() => void router.push("/blog")}
-          />
-
-          {isLoggedIn ? (
-            <>
-              <MenuItem
-                label="Write"
-                onPress={() => void router.push("/blog/create")}
-              />
-              <MenuItem label="Profile" onPress={goToProfile} />
-
-              <View
-                style={[
-                  styles.menuAuth,
-                  {
-                    borderTopColor: colors.border,
-                    paddingTop: spacing.md,
-                    marginTop: spacing.sm,
-                    gap: spacing.sm,
-                  },
-                ]}
-              >
-                <Button
-                  title="Logout"
-                  variant="outlined"
-                  onPress={() => void handleLogout()}
-                />
-              </View>
-            </>
-          ) : (
-            <>
-              <MenuItem
-                label="Write"
-                onPress={() =>  router.push("/register")}
-              />
-
-              <View
-                style={[
-                  styles.menuAuth,
-                  {
-                    borderTopColor: colors.border,
-                    paddingTop: spacing.md,
-                    marginTop: spacing.sm,
-                    gap: spacing.sm,
-                  },
-                ]}
-              >
-                <Button title="Login" variant="outlined" onPress={goToLogin} />
-                <Button
-                  title="Get Started"
-                  variant="filled"
-                  onPress={() =>  router.push("/register")}
-                />
-              </View>
-            </>
-          )}
-        </View>
-      ) : null}
+      <NavButton active={isProfile} label="Profile" onPress={goProfile}>
+        <Ionicons
+          name={isProfile ? "person" : "person-outline"}
+          size={25}
+          color={isProfile ? colors.foreground : colors.mutedForeground}
+        />
+      </NavButton>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    borderBottomWidth: 1,
-    zIndex: 100,
-  },
-  inner: {
+  bar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 6,
   },
-  brand: {
-    flexDirection: "row",
+  item: {
+    flex: 1,
     alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
+    height: 48,
   },
-  logoIcon: {
+  itemInner: {
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 4,
+  },
+  logo: {
     width: 30,
     height: 30,
-    borderRadius: 8,
+  },
+  write: {
+    width: 46,
+    height: 32,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-  },
-  brandText: {
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  actions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  menuDropdown: {
-    borderTopWidth: 1,
-  },
-  menuItem: {
-    marginBottom: 4,
-  },
-  menuAuth: {
-    borderTopWidth: 1,
-  },
-  logoImage: {
-    width: 24,
-    height: 24,
   },
 });
-
-export default Navbar;

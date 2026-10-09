@@ -14,11 +14,11 @@ import { useFocusEffect, useRouter } from "expo-router";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import GridFeed from "../../components/profile/GridFeed";
+import GridFeed from "@/components/profile/GridFeed";
 import MinimalTabBar, {
   type ProfileTab,
 } from "@/components/profile/MinimalTabBar";
-import ProfileHeader from "../../components/profile/ProfileHeader";
+import ProfileHeader from "@/components/profile/ProfileHeader";
 
 import { blogApi } from "@/api/services";
 import { profileApi, type ProfileData } from "@/api/services/profile";
@@ -28,6 +28,7 @@ import { useTheme } from "@/constants/theme";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import type { Blog } from "@/types";
+import Navbar from "@/components/NavBar";
 
 // Your theme has no "destructive" token, so errors use this fixed red.
 const ERROR_COLOR = "#DC2626";
@@ -328,6 +329,7 @@ export default function ProfileScreen() {
           )}
         </View>
       </ScrollView>
+      <Navbar />
     </SafeAreaView>
   );
 }
