@@ -17,7 +17,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import RenderHTML from "@native-html/render";
 
-import { Navbar } from "@/components/NavBar";
+import  Navbar  from "@/components/NavBar";
 import SaveBlogButton from "@/components/SaveBlogButton";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
@@ -321,8 +321,9 @@ export default function BlogDetailPage() {
   if (loading) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <Navbar />
         <DetailSkeleton />
+        <Navbar />
+
       </ThemedSafeAreaView>
     );
   }
@@ -330,7 +331,6 @@ export default function BlogDetailPage() {
   if (!blog) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <Navbar />
         <View style={[styles.state, { padding: spacing.xl }]}>
           <Ionicons
             name="alert-circle-outline"
@@ -360,13 +360,14 @@ export default function BlogDetailPage() {
             onPress={() => router.replace("/blog")}
           />
         </View>
+        <Navbar />
+
       </ThemedSafeAreaView>
     );
   }
 
   return (
     <ThemedSafeAreaView edges={["top", "left", "right"]}>
-      <Navbar />
       <ScrollView
         contentContainerStyle={{ paddingBottom: spacing["4xl"] }}
         refreshControl={
@@ -745,6 +746,8 @@ export default function BlogDetailPage() {
           </View>
         </View>
       </Modal>
+      <Navbar />
+
     </ThemedSafeAreaView>
   );
 }

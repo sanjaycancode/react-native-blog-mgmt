@@ -386,7 +386,6 @@ export default function BlogsPage() {
 
   return (
     <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <Navbar/>
       <FlatList
         data={loading ? [] : blogs}
         keyExtractor={(item) => item._id}
@@ -476,6 +475,8 @@ export default function BlogsPage() {
           ) : null
         }
       />
+        <Navbar/>
+
     </ThemedSafeAreaView>
   );
 }
