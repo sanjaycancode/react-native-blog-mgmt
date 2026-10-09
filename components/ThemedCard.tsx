@@ -9,7 +9,7 @@ interface ThemedCardProps {
   variant?: "default" | "elevated" | "outlined";
 }
 
-export function ThemedCard({
+export  function ThemedCard({
   children,
   style,
   variant = "outlined",

@@ -8,10 +8,8 @@ import {
 
 import { useRouter } from "expo-router";
 
-import { Ionicons } from "@expo/vector-icons";
 import {
   ActivityIndicator,
-  Appbar,
   Button,
   Card,
   Chip,
@@ -19,6 +17,8 @@ import {
   Text,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { AdminShell } from "@/components/admin/AdminShell";
 
 import { adminApi } from "@/api/services/admin";
 import { categoryApi } from "@/api/services/category";
@@ -73,7 +73,6 @@ export default function AdminOverview() {
         ]);
       const nextBlogs = blogsResponse.data.result;
       const nextCategories = categoriesResponse.data.result;
-    const totalUsers = Array.isArray(usersResponse) ? usersResponse.length : 0
       if (!Array.isArray(nextBlogs) || !Array.isArray(nextCategories)) {
         throw new Error("The admin dashboard response has an unexpected format.");
       }
@@ -177,28 +176,7 @@ export default function AdminOverview() {
   }
 
   return (
-    <SafeAreaView
-      edges={["top", "left", "right"]}
-      style={[styles.screen, { backgroundColor: colors.background }]}
-    >
-      <Appbar.Header
-        mode="small"
-        elevated
-        style={{ backgroundColor: colors.card }}
-      >
-        <Appbar.Content
-          title="Admin overview"
-          subtitle={user?.name ? `Welcome, ${user.name}` : undefined}
-        />
-        <Appbar.Action
-          accessibilityLabel="Log out"
-          icon={({ color, size }) => (
-            <Ionicons name="log-out-outline" color={color} size={size} />
-          )}
-          onPress={() => void handleLogout()}
-        />
-      </Appbar.Header>
-
+    <AdminShell userName={user?.name} onLogout={() => void handleLogout()}>
       <ScrollView
         contentContainerStyle={{
           padding: spacing.md,
@@ -318,7 +296,7 @@ export default function AdminOverview() {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </AdminShell>
   );
 }
 

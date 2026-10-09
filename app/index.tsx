@@ -255,7 +255,7 @@ export default function HomeScreen() {
             </View>
 
             <Pressable
-              onPress={() => void openWebsite("/blog")}
+              onPress={() => void router.push("/blog")}
               style={styles.linkRow}
             >
               <Text
@@ -289,7 +289,7 @@ export default function HomeScreen() {
                 <BlogCard
                   key={blog._id}
                   blog={blog}
-                  onPress={() => void openWebsite(`/blog/${blog.slug}`)}
+                  onPress={() => void router.push(`/blog/${blog.slug}`)}
                 />
               ))
             ) : (
