@@ -642,7 +642,7 @@ export default function ProfileScreen() {
             <Button
               title="Start writing"
               variant="filled"
-              onPress={() => void openWebsite("/blog/create")}
+              onPress={() => void router.push("/blog/create")}
               style={{ width: "100%", marginTop: spacing.md }}
             />
           )}
