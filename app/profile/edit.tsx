@@ -124,7 +124,6 @@ export default function EditProfileScreen() {
     setLoadError("");
     try {
       const res = await profileApi.get();
-      console.log(res);
       const p = res?.data?.profile ?? null;
       const nextLinks: Links = {
         instagram: p?.socialLinks?.instagram ?? "",

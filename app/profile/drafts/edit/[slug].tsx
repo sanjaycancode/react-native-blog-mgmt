@@ -220,10 +220,8 @@ export default function EditBlogPage() {
           } as any);
         }
       }
-      console.log(image);
 
       const response = await blogApi.updateBySlug(slug, formData);
-      console.log(response);
       showToast("Blog updated successfully.");
       router.replace({
         pathname: "/blog",

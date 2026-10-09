@@ -1,3 +1,4 @@
+import { ApiResponse, Blog } from "@/types";
 import { apiClient } from "../client";
 
 export interface ProfileUser {
@@ -61,7 +62,7 @@ export const profileApi = {
    * @returns A promise containing the requested draft.
    */
   getDraftBySlug(slug: string) {
-    return apiClient<Response>(`/blog/draft/slug/${slug}`, {
+    return apiClient<ApiResponse<Blog>>(`/blog/draft/slug/${slug}`, {
       method: "GET",
     });
   },
