@@ -31,7 +31,6 @@ export interface ProfileResponse {
 }
 
 export const profileApi = {
-  /** Gets the logged-in user's profile. Needs the Authorization header. */
   get: () => apiClient.get<ProfileResponse>("/profile"),
 
   /**
@@ -44,4 +43,15 @@ export const profileApi = {
       // Only needed if apiClient defaults to JSON; lets the upload go out as multipart.
       headers: { "Content-Type": "multipart/form-data" },
     }),
+  saveBlog(blogId: string) {
+    return apiClient<ProfileResponse>(`/profile/saved-blogs/${blogId}`, {
+      method: "PUT",
+    });
+  },
+
+  removeSavedBlog(blogId: string) {
+    return apiClient<ProfileResponse>(`/profile/saved-blogs/${blogId}`, {
+      method: "DELETE",
+    });
+  }
 };
