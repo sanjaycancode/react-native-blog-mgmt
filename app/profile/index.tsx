@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BlogCard from "@/components/BlogCard";
@@ -142,9 +142,11 @@ export default function ProfileScreen() {
     }
   }, [router]);
 
-  useEffect(() => {
-    void loadData().finally(() => setIsLoading(false));
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadData().finally(() => setIsLoading(false));
+    }, [loadData]),
+  );
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -252,7 +254,7 @@ export default function ProfileScreen() {
     path: string,
   ) => (
     <Pressable
-      onPress={() => void openWebsite(path)}
+      onPress={() => void router.push(path)}
       accessibilityRole="button"
       style={{ marginTop: spacing.md }}
     >
@@ -464,7 +466,7 @@ export default function ProfileScreen() {
               <Button
                 title="Edit profile"
                 variant="outlined"
-                onPress={() => void openWebsite("/profile/edit")}
+                onPress={() => void router.push("/profile/edit")}
                 style={{ width: "100%" }}
               />
               <Button
