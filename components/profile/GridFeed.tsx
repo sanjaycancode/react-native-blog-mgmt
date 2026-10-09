@@ -19,7 +19,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useTheme } from "@/constants/theme";
-import type { Blog } from "@/types";
+
 import { imgSrc } from "@/utils/getImgSrc";
 
 import EmptyState from "./EmptyState";
