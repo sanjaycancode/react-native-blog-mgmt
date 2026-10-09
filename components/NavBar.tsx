@@ -19,7 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 
 import Button from "./ThemedButton";
 
-const BLOG_BASE_URL = "https://blog-ncc19.vercel.app";
+const BLOG_BASE_URL = "http://localhost:8081";
 
 export function Navbar() {
   const { colors, typography, spacing, isDark, toggleTheme } = useTheme();
