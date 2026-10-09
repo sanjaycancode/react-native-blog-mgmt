@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, View } from "react-native";
+import { Image, ScrollView, StyleSheet, View, Platform } from "react-native";
 
 import type { ImagePickerAsset } from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -208,14 +208,22 @@ export default function EditBlogPage() {
       formData.append("tags", tagsInput.trim());
 
       if (image) {
-        formData.append("image", {
-          uri: image.uri,
-          name: getSelectedImageName(image),
-          type: image.mimeType ?? "image/jpeg",
-        } as unknown as Blob);
+        if (Platform.OS === "web" && image.file) {
+          // Web: append the actual browser File.
+          formData.append("image", image.file);
+        } else {
+          // Native: append the local file URI descriptor.
+          formData.append("image", {
+            uri: image.uri,
+            name: getSelectedImageName(image),
+            type: image.mimeType ?? "image/jpeg",
+          } as any);
+        }
       }
+      console.log(image);
 
       const response = await blogApi.updateBySlug(slug, formData);
+      console.log(response);
       showToast("Blog updated successfully.");
       router.replace({
         pathname: "/blog",
