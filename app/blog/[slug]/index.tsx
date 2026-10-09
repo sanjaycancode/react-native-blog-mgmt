@@ -470,11 +470,10 @@ export default function BlogDetailPage() {
                 variant="outlined"
                 startIcon={<Ionicons name="create-outline" />}
                 onPress={() =>
-                  void Linking.openURL(
-                    `/blog/${blog.slug}/edit`,
-                  ).catch((linkError: unknown) =>
-                    showToast(getErrorMessage(linkError), "error"),
-                  )
+                  router.push({
+                    pathname: "/blog/[slug]/edit",
+                    params: { slug: blog.slug },
+                  })
                 }
               />
               <ThemedButton
