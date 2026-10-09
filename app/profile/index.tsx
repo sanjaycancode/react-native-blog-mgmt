@@ -14,11 +14,11 @@ import { useFocusEffect, useRouter } from "expo-router";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import GridFeed from "@/components/profile/Gridfeed";
+import GridFeed from "../../components/profile/GridFeed";
 import MinimalTabBar, {
   type ProfileTab,
-} from "@/components/profile/Minimaltabbar";
-import ProfileHeader from "@/components/profile/ProfileHeader";
+} from "@/components/profile/MinimalTabBar";
+import ProfileHeader from "../../components/profile/ProfileHeader";
 
 import { blogApi } from "@/api/services";
 import { profileApi, type ProfileData } from "@/api/services/profile";

@@ -9,11 +9,13 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useTheme } from "@/constants/theme";
-import type { Blog } from "@/types";
+
 import { imgSrc } from "@/utils/getImgSrc";
 
-import EmptyState from "./Emptystate";
-import type { ProfileTab } from "./Minimaltabbar";
+import type { Blog } from "@/types";
+
+import EmptyState from "./EmptyState";
+import type { ProfileTab } from "./MinimalTabBar";
 
 const GAP = 10;
 const SPRING = { damping: 18, stiffness: 260, mass: 0.7 };

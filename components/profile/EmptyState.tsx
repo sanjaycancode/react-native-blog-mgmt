@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/constants/theme";
 
-import type { ProfileTab } from "./Minimaltabbar";
+import type { ProfileTab } from "./MinimalTabBar";
 
 const COPY: Record<
   ProfileTab,
