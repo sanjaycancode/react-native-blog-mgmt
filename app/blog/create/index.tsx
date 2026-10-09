@@ -10,7 +10,7 @@ import FormField from "@/components/forms/FormField";
 import FormImagePicker from "@/components/forms/FormImagePicker";
 import FormSelect from "@/components/forms/FormSelect";
 import RichTextEditor from "@/components/forms/RichTextEditor";
-import { Navbar } from "@/components/NavBar";
+import  Navbar  from "@/components/NavBar";
 import { ThemedButton } from "@/components/ThemedButton";
 import  ThemedCard  from "@/components/ThemedCard";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
@@ -180,12 +180,13 @@ export default function CreateBlogPage() {
   if (isInitializing) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <Navbar />
         <View style={[styles.centered, { padding: spacing.xl }]}>
           <ThemedText variant="bodySmall" semantic="muted">
             Checking your account…
           </ThemedText>
         </View>
+        <Navbar />
+
       </ThemedSafeAreaView>
     );
   }
@@ -193,7 +194,6 @@ export default function CreateBlogPage() {
   if (!isAuthenticated) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <Navbar />
         <View style={[styles.centered, { padding: spacing.xl, gap: spacing.md }]}>
           <Ionicons
             name="lock-closed-outline"
@@ -215,13 +215,14 @@ export default function CreateBlogPage() {
             onPress={() => router.push("/login")}
           />
         </View>
+        <Navbar />
+
       </ThemedSafeAreaView>
     );
   }
 
   return (
     <ThemedSafeAreaView edges={["top", "left", "right"]}>
-      <Navbar />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
@@ -439,6 +440,8 @@ export default function CreateBlogPage() {
           </View>
         </ThemedCard>
       </ScrollView>
+      <Navbar />
+
     </ThemedSafeAreaView>
   );
 }

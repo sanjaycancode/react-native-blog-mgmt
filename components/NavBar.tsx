@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { usePathname, useRouter } from "expo-router";
+import { usePathname, useRouter, type Href } from "expo-router";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -116,7 +116,7 @@ export default function Navbar() {
     pathname.startsWith("/profile") || pathname.startsWith("/admin");
 
   // Top-level sections swap in place so the back stack doesn't pile up.
-  const goTab = (path: string, active: boolean) => {
+  const goTab = (path: Href, active: boolean) => {
     if (!active) void router.replace(path);
   };
 
