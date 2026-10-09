@@ -346,7 +346,9 @@ export default function DraftsScreen() {
                       readTime: "Draft",
                       isFeatured: false,
                     }}
-                    onPress={() => void openWebsite(draftEditPath(blog))}
+                    onPress={() =>
+                      void router.push(`/profile/drafts/${blog.slug}`)
+                    }
                   />
                   <View
                     style={[
@@ -358,7 +360,7 @@ export default function DraftsScreen() {
                       "Continue writing",
                       "create-outline",
                       colors.primary,
-                      () => void openWebsite(draftEditPath(blog)),
+                      () => void router.push(`/blog/${blog.slug}/edit`),
                       isBusy,
                     )}
                     {renderAction(

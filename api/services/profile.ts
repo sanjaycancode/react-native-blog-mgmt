@@ -53,5 +53,16 @@ export const profileApi = {
     return apiClient<ProfileResponse>(`/profile/saved-blogs/${blogId}`, {
       method: "DELETE",
     });
-  }
+  },
+  /**
+   * Retrieves a draft blog by slug.
+   *
+   * @param slug - Draft blog slug.
+   * @returns A promise containing the requested draft.
+   */
+  getDraftBySlug(slug: string) {
+    return apiClient<Response>(`/blog/draft/slug/${slug}`, {
+      method: "GET",
+    });
+  },
 };
