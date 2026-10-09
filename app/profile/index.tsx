@@ -462,18 +462,25 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
+            <View
+              style={{
+                marginTop: spacing.lg,
+                gap: spacing.sm,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
               <Button
                 title="Edit profile"
-                variant="outlined"
                 onPress={() => void router.push("/profile/edit")}
-                style={{ width: "100%" }}
+                style={{ width: "50%" }}
+                variant="filled"
               />
               <Button
                 title="Analytics"
                 variant="outlined"
                 onPress={() => router.push("/profile/analytics")}
-                style={{ width: "100%" }}
+                style={{ width: "50%" }}
               />
             </View>
 
@@ -809,7 +816,7 @@ export default function ProfileScreen() {
                         isFeatured: String(blog.status) === "featured",
                         image: blog.image,
                       }}
-                      onPress={() => void openWebsite(`/blogs/${blog.slug}`)}
+                      onPress={() => void router.push(`/blog/${blog.slug}`)}
                     />
                     <View
                       style={[
