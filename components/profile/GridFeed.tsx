@@ -1,22 +1,45 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect } from "react";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type DimensionValue,
+} from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 
 import { useTheme } from "@/constants/theme";
 import type { Blog } from "@/types";
 import { imgSrc } from "@/utils/getImgSrc";
 
-import EmptyState from "./Emptystate";
-import type { ProfileTab } from "./Minimaltabbar";
+import EmptyState from "./EmptyState";
+import type { ProfileTab } from "./MinimalTabBar";
 
 const GAP = 10;
 const SPRING = { damping: 18, stiffness: 260, mass: 0.7 };
+
+// Only populated objects are shown; a bare id string would just be noise.
+function categoryTitle(blog: Blog): string | undefined {
+  const c = blog.category as unknown;
+  return typeof c === "object" && c
+    ? (c as { title?: string }).title
+    : undefined;
+}
+
+function authorName(blog: Blog): string | undefined {
+  const a = (blog as unknown as { author?: unknown }).author;
+  return typeof a === "object" && a ? (a as { name?: string }).name : undefined;
+}
 
 type Props = {
   items: Blog[];
@@ -25,20 +48,25 @@ type Props = {
   onPressItem: (blog: Blog) => void;
   onLongPressItem?: (blog: Blog) => void;
   onEmptyAction?: () => void;
+  showAuthor?: boolean;
 };
 
-function GridCard({
+export function GridCard({
   blog,
   index,
   type,
-  busy,
+  busy = false,
+  showAuthor = false,
+  width,
   onPress,
   onLongPress,
 }: {
   blog: Blog;
   index: number;
   type: ProfileTab;
-  busy: boolean;
+  busy?: boolean;
+  showAuthor?: boolean;
+  width?: DimensionValue;
   onPress: () => void;
   onLongPress?: () => void;
 }) {
@@ -52,7 +80,7 @@ function GridCard({
   return (
     <Animated.View
       entering={FadeInDown.delay(Math.min(index, 8) * 35).duration(240)}
-      style={[styles.cardWrap, animatedStyle]}
+      style={[styles.cardWrap, width !== undefined && { width }, animatedStyle]}
     >
       <Pressable
         onPress={onPress}
@@ -97,9 +125,9 @@ function GridCard({
 
         {/* Translucent caption plate */}
         <View style={styles.caption}>
-          {!!blog.category && (
+          {!!categoryTitle(blog) && (
             <Text numberOfLines={1} style={styles.captionMeta}>
-              {String(blog.category)}
+              {categoryTitle(blog)}
             </Text>
           )}
           <Text
@@ -113,6 +141,14 @@ function GridCard({
           >
             {blog.title}
           </Text>
+          {showAuthor && !!authorName(blog) && (
+            <Text
+              numberOfLines={1}
+              style={[styles.captionMeta, { marginTop: 3, marginBottom: 0 }]}
+            >
+              by {authorName(blog)}
+            </Text>
+          )}
         </View>
       </Pressable>
     </Animated.View>
@@ -126,6 +162,7 @@ export default function GridFeed({
   onPressItem,
   onLongPressItem,
   onEmptyAction,
+  showAuthor,
 }: Props) {
   if (items.length === 0) {
     return <EmptyState type={type} onAction={onEmptyAction} />;
@@ -140,11 +177,39 @@ export default function GridFeed({
           index={index}
           type={type}
           busy={busyId === blog._id}
+          showAuthor={showAuthor}
           onPress={() => onPressItem(blog)}
           onLongPress={
             onLongPressItem ? () => onLongPressItem(blog) : undefined
           }
         />
+      ))}
+    </View>
+  );
+}
+
+/** Pulsing placeholders shown while the feed loads. */
+export function GridSkeleton({ count = 4 }: { count?: number }) {
+  const { colors } = useTheme();
+  const pulse = useSharedValue(0.45);
+
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(1, { duration: 800 }), -1, true);
+  }, [pulse]);
+
+  const style = useAnimatedStyle(() => ({ opacity: pulse.value }));
+
+  return (
+    <View style={styles.grid}>
+      {Array.from({ length: count }).map((_, i) => (
+        <Animated.View key={i} style={[styles.cardWrap, style]}>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: colors.secondary, borderColor: colors.border },
+            ]}
+          />
+        </Animated.View>
       ))}
     </View>
   );
