@@ -19,6 +19,7 @@ type Props = {
   onAnalytics: () => void;
   onCreate: () => void;
   onOpenLink: (value: string) => void;
+  onLogout: () => void;
 };
 
 function Stat({ value, label }: { value: number; label: string }) {
@@ -81,6 +82,7 @@ export default function ProfileHeader({
   onAnalytics,
   onCreate,
   onOpenLink,
+  onLogout,
 }: Props) {
   const { colors, typography, spacing } = useTheme();
   const name = profile?.user?.name ?? "Your profile";
@@ -105,6 +107,7 @@ export default function ProfileHeader({
           onPress={onAnalytics}
         />
         <IconButton icon="add" label="Write a new blog" onPress={onCreate} />
+        <IconButton icon="log-out-outline" label="Log out" onPress={onLogout} />
       </View>
 
       {/* Avatar + stats */}

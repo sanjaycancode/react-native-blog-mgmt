@@ -51,6 +51,7 @@ export default function LoginScreen() {
   const { colors, typography, spacing, radii } = useTheme();
   const router = useRouter();
   const { login, isAuthenticated } = useAuth();
+  const ADMIN_ROLE = "admin";
 
   const [values, setValues] = useState<FormValues>({
     email: "",
@@ -86,19 +87,25 @@ export default function LoginScreen() {
 
     setIsSubmitting(true);
     try {
-      await login({
+      const result = await login({
         email: values.email.trim().toLowerCase(),
         password: values.password,
       });
-      router.push("/profile");
-      // The effect above navigates once the session is set.
+
+      // Adjust this to match what your login() returns
+      const role = result?.user?.role || "user";
+
+      if (role === ADMIN_ROLE) {
+        router.replace("/admin");
+      } else {
+        router.push("/profile");
+      }
     } catch (error) {
       Alert.alert("Couldn't log you in", getErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
-  }, [errors, isSubmitting, login, values]);
-
+  }, [errors, isSubmitting, login, router, values]);
   const renderLabel = (label: string) => (
     <Text
       style={{
