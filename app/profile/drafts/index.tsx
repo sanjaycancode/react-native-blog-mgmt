@@ -339,12 +339,14 @@ export default function DraftsScreen() {
                     blog={{
                       _id: blog._id,
                       title: blog.title,
-                      excerpt: blog.description,
+                      slug: blog.slug,
+                      description: blog.description,
                       author: blog.author,
-                      date: new Date(blog.createdAt).toLocaleDateString(),
+                      createdAt: new Date(blog.createdAt).toLocaleDateString(),
                       category: blog.category,
-                      readTime: "Draft",
-                      isFeatured: false,
+                      image: blog?.image,
+                      status:blog.status,
+                      updatedAt:blog.updatedAt
                     }}
                     onPress={() =>
                       void router.push(`/profile/drafts/${blog.slug}`)

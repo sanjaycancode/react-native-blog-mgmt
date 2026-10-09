@@ -811,7 +811,7 @@ export default function ProfileScreen() {
                         excerpt: blog.description,
                         author: blog.author,
                         date: new Date(blog.createdAt).toLocaleDateString(),
-                        category: blog.category?.title ?? "Uncategorized",
+                        category: blog.category ,
                         readTime: "Read story",
                         isFeatured: String(blog.status) === "featured",
                         image: blog.image,

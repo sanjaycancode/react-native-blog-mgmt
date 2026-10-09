@@ -64,10 +64,6 @@ function getPasswordStrength(password: string): number {
 
 const STRENGTH_LABELS = ["", "Weak", "Okay", "Good", "Strong"];
 
-/**
- * TODO: connect this to your register endpoint.
- * Throw an Error with a readable message if registration fails.
- */
 
 export default function RegisterScreen() {
   const { colors, typography, spacing, radii } = useTheme();
