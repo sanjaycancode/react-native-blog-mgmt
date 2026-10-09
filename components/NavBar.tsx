@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   Alert,
   Image,
-  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -14,12 +13,11 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/constants/theme";
+
 // ⚠️ Adjust this import to match your auth setup
 import { useAuth } from "@/context/AuthContext";
 
 import Button from "./ThemedButton";
-
-const BLOG_BASE_URL = "http://localhost:8081";
 
 export function Navbar() {
   const { colors, typography, spacing, isDark, toggleTheme } = useTheme();
@@ -32,18 +30,6 @@ export function Navbar() {
 
   const closeMenu = () => setIsOpen(false);
 
-  const openWebsite = async (path: string) => {
-    closeMenu();
-    try {
-      await Linking.openURL(`${BLOG_BASE_URL}${path}`);
-    } catch {
-      Alert.alert(
-        "Unable to open page",
-        "Please check your connection and try again.",
-      );
-    }
-  };
-
   const goToLogin = () => {
     closeMenu();
     router.push("/login");
@@ -53,11 +39,14 @@ export function Navbar() {
     closeMenu();
     router.replace("/");
   };
-
   const goToProfile = () => {
+    const user = session?.user
     closeMenu();
-    // ⚠️ Change to your real profile route, or use openWebsite(`/profile/${user.id}`)
-    router.push("/profile");
+    if (user?.role === "admin") {
+      router.push("/admin");
+    } else {
+      router.push("/profile");
+    }
   };
 
   const handleLogout = async () => {

@@ -12,7 +12,7 @@ import FormSelect from "@/components/forms/FormSelect";
 import RichTextEditor from "@/components/forms/RichTextEditor";
 import { Navbar } from "@/components/NavBar";
 import { ThemedButton } from "@/components/ThemedButton";
-import { ThemedCard } from "@/components/ThemedCard";
+import  ThemedCard  from "@/components/ThemedCard";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";

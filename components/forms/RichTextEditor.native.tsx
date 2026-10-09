@@ -81,7 +81,6 @@ export function RichTextEditor({
             paddingHorizontal: spacing.xs,
           },
         ]}
-        flatContainerStyle={styles.toolbarContent}
         iconMap={{
           [actions.setBold]: () => (
             <ThemedText style={styles.boldIcon}>B</ThemedText>
@@ -146,10 +145,6 @@ const styles = StyleSheet.create({
   },
   toolbar: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  toolbarContent: {
-    alignItems: "center",
-    flexWrap: "wrap",
   },
   editor: {
     minHeight: 220,
