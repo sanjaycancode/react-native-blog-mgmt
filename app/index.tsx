@@ -12,6 +12,7 @@ import {
 
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 
 import BlogCard from "@/components/BlogCard";
 import Footer from "@/components/Footer";
@@ -37,6 +38,7 @@ export default function HomeScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isBlogsLoading, setIsBlogsLoading] = useState(true);
   const [blogsError, setBlogsError] = useState<string | null>(null);
+  const router = useRouter();
 
   const openWebsite = useCallback(async (path: string) => {
     try {
@@ -66,7 +68,10 @@ export default function HomeScreen() {
     if (categoriesResult.status === "fulfilled") {
       setCategories(categoriesResult.value.data.result);
     } else {
-      console.error("Failed to fetch blog categories:", categoriesResult.reason);
+      console.error(
+        "Failed to fetch blog categories:",
+        categoriesResult.reason,
+      );
     }
 
     setIsBlogsLoading(false);
@@ -90,258 +95,260 @@ export default function HomeScreen() {
       edges={["top", "left", "right"]}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-    <Navbar />
+      <Navbar />
 
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Hero Section */}
-      <View style={[styles.hero, { padding: spacing.xl }]}>
-        <Text
-          style={[
-            styles.eyebrow,
-            {
-              color: colors.primary,
-              fontSize: typography.sizes.xs,
-              fontWeight: typography.weights.bold,
-              marginBottom: spacing.xs,
-            },
-          ]}
-        >
-          IDEAS WORTH SHARING
-        </Text>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero Section */}
+        <View style={[styles.hero, { padding: spacing.xl }]}>
+          <Text
+            style={[
+              styles.eyebrow,
+              {
+                color: colors.primary,
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.bold,
+                marginBottom: spacing.xs,
+              },
+            ]}
+          >
+            IDEAS WORTH SHARING
+          </Text>
 
-        <Text
-          style={[
-            styles.heroTitle,
-            {
-              color: colors.foreground,
-              fontSize: typography.sizes["3xl"],
-              fontWeight: typography.weights.heavy,
-              lineHeight: 38,
-            },
-          ]}
-        >
-          Publish your passions,{" "}
-          <Text style={{ color: colors.primary }}>your way.</Text>
-        </Text>
+          <Text
+            style={[
+              styles.heroTitle,
+              {
+                color: colors.foreground,
+                fontSize: typography.sizes["3xl"],
+                fontWeight: typography.weights.heavy,
+                lineHeight: 38,
+              },
+            ]}
+          >
+            Publish your passions,{" "}
+            <Text style={{ color: colors.primary }}>your way.</Text>
+          </Text>
 
-        <Text
-          style={[
-            styles.heroSubtitle,
-            {
-              color: colors.mutedForeground,
-              fontSize: typography.sizes.base,
-              lineHeight: 24,
-              marginTop: spacing.md,
-            },
-          ]}
-        >
-          Discover thoughtful writing from a growing Nepali community. Read
-          something useful, then add your own voice.
-        </Text>
+          <Text
+            style={[
+              styles.heroSubtitle,
+              {
+                color: colors.mutedForeground,
+                fontSize: typography.sizes.base,
+                lineHeight: 24,
+                marginTop: spacing.md,
+              },
+            ]}
+          >
+            Discover thoughtful writing from a growing Nepali community. Read
+            something useful, then add your own voice.
+          </Text>
 
-        <View
-          style={[
-            styles.heroActions,
-            { marginTop: spacing.xl, gap: spacing.md },
-          ]}
-        >
-          <Button title="Browse Blogs"
-            variant="filled"
-            onPress={() => void openWebsite("/blog")}
-            style={styles.heroButton}
-          />
-          <Button title="Join the community"
-            variant="outlined"
-            onPress={() => void openWebsite("/register")}
-            style={styles.heroButton}
-          />
+          <View
+            style={[
+              styles.heroActions,
+              { marginTop: spacing.xl, gap: spacing.md },
+            ]}
+          >
+            <Button
+              title="Browse Blogs"
+              variant="filled"
+              onPress={() => void router.push("/blog")}
+              style={styles.heroButton}
+            />
+            <Button
+              title="Join the community"
+              variant="outlined"
+              onPress={() => void router.push("/register")}
+              style={styles.heroButton}
+            />
+          </View>
         </View>
 
+        {/* Category Filter Chips */}
+        <View style={{ marginVertical: spacing.md }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.categoryScroll,
+              { paddingHorizontal: spacing.xl },
+            ]}
+          >
+            {categoryOptions.map((cat) => {
+              const isSelected = selectedCategory === cat;
+              return (
+                <Pressable
+                  key={cat}
+                  onPress={() => setSelectedCategory(cat)}
+                  style={[
+                    styles.categoryChip,
+                    {
+                      backgroundColor: isSelected
+                        ? colors.primary
+                        : colors.card,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      borderRadius: radii.full,
+                      paddingHorizontal: spacing.lg,
+                      paddingVertical: spacing.sm,
+                      marginRight: spacing.sm,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: isSelected
+                        ? colors.primaryForeground
+                        : colors.foreground,
+                      fontSize: typography.sizes.xs,
+                      fontWeight: isSelected
+                        ? typography.weights.bold
+                        : typography.weights.medium,
+                    }}
+                  >
+                    {cat}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
 
-    
-      </View>
-
-      {/* Category Filter Chips */}
-      <View style={{ marginVertical: spacing.md }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.categoryScroll,
-            { paddingHorizontal: spacing.xl },
+        {/* Latest Stories Section */}
+        <View
+          style={[
+            styles.section,
+            { paddingHorizontal: spacing.xl, marginTop: spacing.lg },
           ]}
         >
-          {categoryOptions.map((cat) => {
-            const isSelected = selectedCategory === cat;
-            return (
-              <Pressable
-                key={cat}
-                onPress={() => setSelectedCategory(cat)}
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text
                 style={[
-                  styles.categoryChip,
+                  styles.eyebrow,
                   {
-                    backgroundColor: isSelected ? colors.primary : colors.card,
-                    borderColor: isSelected ? colors.primary : colors.border,
-                    borderRadius: radii.full,
-                    paddingHorizontal: spacing.lg,
-                    paddingVertical: spacing.sm,
-                    marginRight: spacing.sm,
+                    color: colors.primary,
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.bold,
+                    marginBottom: spacing.xs,
                   },
                 ]}
               >
-                <Text
-                  style={{
-                    color: isSelected
-                      ? colors.primaryForeground
-                      : colors.foreground,
-                    fontSize: typography.sizes.xs,
-                    fontWeight: isSelected
-                      ? typography.weights.bold
-                      : typography.weights.medium,
-                  }}
-                >
-                  {cat}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
+                FRESH FROM THE COMMUNITY
+              </Text>
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  {
+                    color: colors.foreground,
+                    fontSize: typography.sizes["2xl"],
+                    fontWeight: typography.weights.heavy,
+                  },
+                ]}
+              >
+                Latest stories
+              </Text>
+            </View>
 
-      {/* Latest Stories Section */}
-      <View
-        style={[
-          styles.section,
-          { paddingHorizontal: spacing.xl, marginTop: spacing.lg },
-        ]}
-      >
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text
-              style={[
-                styles.eyebrow,
-                {
+            <Pressable
+              onPress={() => void openWebsite("/blog")}
+              style={styles.linkRow}
+            >
+              <Text
+                style={{
                   color: colors.primary,
-                  fontSize: typography.sizes.xs,
-                  fontWeight: typography.weights.bold,
-                  marginBottom: spacing.xs,
-                },
-              ]}
-            >
-              FRESH FROM THE COMMUNITY
-            </Text>
-            <Text
-              style={[
-                styles.sectionTitle,
-                {
-                  color: colors.foreground,
-                  fontSize: typography.sizes["2xl"],
-                  fontWeight: typography.weights.heavy,
-                },
-              ]}
-            >
-              Latest stories
-            </Text>
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.semibold,
+                }}
+              >
+                View all
+              </Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+            </Pressable>
           </View>
 
-          <Pressable
-            onPress={() => void openWebsite("/blog")}
-            style={styles.linkRow}
+          {/* Story List */}
+          <View style={{ marginTop: spacing.lg }}>
+            {isBlogsLoading ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : blogsError ? (
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: typography.sizes.sm,
+                }}
+              >
+                Could not load stories: {blogsError}
+              </Text>
+            ) : filteredBlogs.length > 0 ? (
+              filteredBlogs.map((blog) => (
+                <BlogCard
+                  key={blog._id}
+                  blog={blog}
+                  onPress={() => void openWebsite(`/blog/${blog.slug}`)}
+                />
+              ))
+            ) : (
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: typography.sizes.sm,
+                }}
+              >
+                No stories found in this category.
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* Write CTA Section */}
+        <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.md }}>
+          <Card
+            style={{
+              backgroundColor: colors.secondary,
+              borderColor: colors.border,
+              padding: spacing.xl,
+              alignItems: "center",
+            }}
           >
             <Text
               style={{
-                color: colors.primary,
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.semibold,
+                color: colors.secondaryForeground,
+                fontSize: typography.sizes.xl,
+                fontWeight: typography.weights.bold,
+                textAlign: "center",
               }}
             >
-              View all
+              Share your story with the world
             </Text>
-            <Ionicons name="arrow-forward" size={14} color={colors.primary} />
-          </Pressable>
-        </View>
-
-        {/* Story List */}
-        <View style={{ marginTop: spacing.lg }}>
-          {isBlogsLoading ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : blogsError ? (
             <Text
               style={{
                 color: colors.mutedForeground,
                 fontSize: typography.sizes.sm,
+                textAlign: "center",
+                lineHeight: 20,
+                marginTop: spacing.xs,
+                marginBottom: spacing.lg,
               }}
             >
-              Could not load stories: {blogsError}
+              Join hundreds of Nepali creators, thinkers, and builders writing
+              everyday.
             </Text>
-          ) : filteredBlogs.length > 0 ? (
-            filteredBlogs.map((blog) => (
-              <BlogCard
-                key={blog._id}
-                blog={blog}
-                onPress={() => void openWebsite(`/blog/${blog.slug}`)}
-              />
-            ))
-          ) : (
-            <Text
-              style={{
-                color: colors.mutedForeground,
-                fontSize: typography.sizes.sm,
-              }}
-            >
-              No stories found in this category.
-            </Text>
-          )}
+            <Button
+              title="Create Your Post"
+              variant="filled"
+              onPress={() => void router.push("/register")}
+              style={{ width: "100%" }}
+            />
+          </Card>
         </View>
-      </View>
 
-      {/* Write CTA Section */}
-      <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.md }}>
-        <Card
-          style={{
-            backgroundColor: colors.secondary,
-            borderColor: colors.border,
-            padding: spacing.xl,
-            alignItems: "center",
-          }}
-        >
-          <Text
-            style={{
-              color: colors.secondaryForeground,
-              fontSize: typography.sizes.xl,
-              fontWeight: typography.weights.bold,
-              textAlign: "center",
-            }}
-          >
-            Share your story with the world
-          </Text>
-          <Text
-            style={{
-              color: colors.mutedForeground,
-              fontSize: typography.sizes.sm,
-              textAlign: "center",
-              lineHeight: 20,
-              marginTop: spacing.xs,
-              marginBottom: spacing.lg,
-            }}
-          >
-            Join hundreds of Nepali creators, thinkers, and builders writing
-            everyday.
-          </Text>
-          <Button title = "Create Your Post"
-            variant="filled"
-            onPress={() => void openWebsite("/register")}
-            style={{ width: "100%" }}
-          />
-        </Card>
-      </View>
-
-      <Footer />
-    </ScrollView>
+        <Footer />
+      </ScrollView>
     </SafeAreaView>
   );
 }

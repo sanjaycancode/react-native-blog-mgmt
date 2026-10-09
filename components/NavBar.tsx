@@ -200,14 +200,14 @@ export function Navbar() {
           <MenuItem label="Home" onPress={goToHome} active />
           <MenuItem
             label="Explore"
-            onPress={() => void openWebsite("/blogs")}
+            onPress={() => void router.push("/blog")}
           />
 
           {isLoggedIn ? (
             <>
               <MenuItem
                 label="Write"
-                onPress={() => void openWebsite("/blogs/create")}
+                onPress={() => void router.push("/blog/create")}
               />
               <MenuItem label="Profile" onPress={goToProfile} />
 
