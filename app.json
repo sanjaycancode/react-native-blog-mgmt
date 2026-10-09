@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Expo Boilerplate",
+    "name": "NepalCanBlog",
+    "icon": "./assets/images/logo.png",
     "slug": "expo-react-native-boilerplate",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "scheme": "expoboilerplate",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -16,7 +16,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#EDE9FE"
       },
       "package": "com.example.expoboilerplate"
@@ -37,7 +37,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 160,
           "backgroundColor": "#F9F9FF"
         }

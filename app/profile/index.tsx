@@ -29,6 +29,7 @@ import { getErrorMessage } from "@/utils/errorMessage";
 
 import type { Blog } from "@/types";
 import Navbar from "@/components/NavBar";
+import { useAuth } from "@/context/AuthContext";
 
 // Your theme has no "destructive" token, so errors use this fixed red.
 const ERROR_COLOR = "#DC2626";
@@ -60,6 +61,25 @@ export default function ProfileScreen() {
   const [blogsError, setBlogsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
   const [busyBlogId, setBusyBlogId] = useState<string | null>(null);
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert("Log out?", "You'll need need to sign in again. ", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await logout();
+            router.replace("/");
+          } catch {
+            Alert.alert("Logout failed", "Please try again");
+          }
+        },
+      },
+    ]);
+  };
 
   const openExternal = useCallback(async (value: string) => {
     try {
@@ -277,6 +297,7 @@ export default function ProfileScreen() {
           onAnalytics={() => void router.push("/profile/analytics")}
           onCreate={() => void router.push("/blog/create")}
           onOpenLink={(value) => void openExternal(value)}
+          onLogout={handleLogout}
         />
 
         <MinimalTabBar
