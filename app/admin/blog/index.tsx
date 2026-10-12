@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  Modal,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -20,7 +22,8 @@ import {
   Text,
 } from "react-native-paper";
 
-import { AdminShell } from "@/components/admin/AdminShell";
+import { AdminShell } from "@/app/admin/AdminShell";
+
 import SearchBox from "@/components/SearchBox";
 
 import { adminApi } from "@/api/services/admin";
@@ -47,8 +50,6 @@ const STATUS_FILTERS = [
 
 type BlogFilters = {
   search: string;
-  author: string;
-  tag: string;
   status: string;
 };
 
@@ -59,7 +60,7 @@ type Confirmation = {
 
 export default function AdminBlogsPage() {
   const router = useRouter();
-  const { colors, spacing, radii } = useTheme();
+  const { colors, spacing, radii, typography } = useTheme();
   const { session, isAuthenticated, isInitializing, logout } = useAuth();
   const { showToast } = useToast();
   const user = session?.user;
@@ -67,20 +68,19 @@ export default function AdminBlogsPage() {
 
   const [filters, setFilters] = useState<BlogFilters>({
     search: "",
-    author: "",
-    tag: "",
     status: "",
   });
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
   const [blogs, setBlogs] = useState<AdminBlog[]>([]);
   const [totalBlogs, setTotalBlogs] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [statusMenuVisible, setStatusMenuVisible] = useState(false);
 
   const updateFilters = useCallback((update: Partial<BlogFilters>) => {
     setFilters((current) => ({ ...current, ...update }));
@@ -105,11 +105,7 @@ export default function AdminBlogsPage() {
     if (!isAdmin || isInitializing) return;
 
     let active = true;
-    if (page === 1) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
+    setLoading(true);
     setError("");
 
     void adminApi
@@ -117,9 +113,7 @@ export default function AdminBlogsPage() {
         page,
         limit: PAGE_SIZE,
         search: filters.search || undefined,
-        author: filters.author || undefined,
         status: filters.status || undefined,
-        tag: filters.tag || undefined,
       })
       .then((response) => {
         if (!active) return;
@@ -127,10 +121,9 @@ export default function AdminBlogsPage() {
         if (!Array.isArray(result)) {
           throw new Error("The blog list response has an unexpected format.");
         }
-        setBlogs((current) =>
-          page === 1 ? result : [...current, ...result],
-        );
+        setBlogs(result);
         setTotalBlogs(response.data.meta.totalBlogs);
+        setTotalPages(response.data.meta.totalPages);
       })
       .catch((requestError: unknown) => {
         if (active) setError(getErrorMessage(requestError));
@@ -138,7 +131,6 @@ export default function AdminBlogsPage() {
       .finally(() => {
         if (!active) return;
         setLoading(false);
-        setLoadingMore(false);
         setRefreshing(false);
       });
 
@@ -149,12 +141,14 @@ export default function AdminBlogsPage() {
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    if (page !== 1) {
-      setPage(1);
-    } else {
-      setReloadKey((current) => current + 1);
-    }
-  }, [page]);
+    setPage(1);
+    setReloadKey((current) => current + 1);
+  }, []);
+
+  const handlePageChange = useCallback((nextPage: number) => {
+    setPage(nextPage);
+    setError("");
+  }, []);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -217,7 +211,9 @@ export default function AdminBlogsPage() {
     );
   }
 
-  const hasMore = blogs.length < totalBlogs;
+  const selectedStatusLabel =
+    STATUS_FILTERS.find((filter) => filter.value === filters.status)?.label ??
+    "All statuses";
 
   return (
     <AdminShell userName={user?.name} onLogout={() => void handleLogout()}>
@@ -249,58 +245,121 @@ export default function AdminBlogsPage() {
         <Card mode="outlined" style={{ backgroundColor: colors.card }}>
           <Card.Content style={{ gap: spacing.md }}>
             <SearchBox
-              key="blog-title-search"
               initialValue={filters.search}
               onSearch={(search) => updateFilters({ search })}
-              placeholder="Search by title"
-            />
-            <SearchBox
-              initialValue={filters.author}
-              onSearch={(author) => updateFilters({ author })}
-              placeholder="Search by author"
-            />
-            <SearchBox
-              initialValue={filters.tag}
-              onSearch={(tag) => updateFilters({ tag })}
-              placeholder="Search by tag"
+              placeholder="Search by title, author, or tag"
             />
             <View style={{ gap: spacing.sm }}>
               <Text variant="labelLarge" style={{ color: colors.foreground }}>
                 Status
               </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: spacing.sm }}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Status filter: ${selectedStatusLabel}`}
+                accessibilityState={{ expanded: statusMenuVisible }}
+                onPress={() => setStatusMenuVisible(true)}
+                style={[
+                  styles.statusDropdown,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    borderRadius: radii.md,
+                    minHeight: 40,
+                    paddingHorizontal: spacing.md,
+                  },
+                ]}
               >
+                <Text variant="bodySmall" style={{ color: colors.foreground }}>
+                  {selectedStatusLabel}
+                </Text>
+                <Ionicons
+                  name={statusMenuVisible ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={colors.mutedForeground}
+                />
+              </Pressable>
+            </View>
+          </Card.Content>
+        </Card>
+
+        <Modal
+          animationType="fade"
+          transparent
+          visible={statusMenuVisible}
+          onRequestClose={() => setStatusMenuVisible(false)}
+        >
+          <View style={styles.statusModal}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close status filter"
+              onPress={() => setStatusMenuVisible(false)}
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: colors.foreground, opacity: 0.35 },
+              ]}
+            />
+            <View
+              style={[
+                styles.statusMenu,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderRadius: radii.lg,
+                  maxHeight: "70%",
+                  padding: spacing.md,
+                },
+              ]}
+            >
+              <Text
+                variant="titleMedium"
+                style={[styles.statusMenuTitle, { color: colors.foreground }]}
+              >
+                Choose a status
+              </Text>
+              <ScrollView>
                 {STATUS_FILTERS.map((filter) => {
                   const selected = filters.status === filter.value;
                   return (
-                    <Chip
+                    <Pressable
                       key={filter.value || "all"}
-                      selected={selected}
-                      showSelectedCheck={false}
-                      onPress={() => updateFilters({ status: filter.value })}
-                      style={{
-                        backgroundColor: selected
-                          ? colors.secondary
-                          : colors.card,
-                        borderColor: selected
-                          ? colors.primary
-                          : colors.border,
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      onPress={() => {
+                        setStatusMenuVisible(false);
+                        updateFilters({ status: filter.value });
                       }}
-                      textStyle={{
-                        color: selected ? colors.primary : colors.foreground,
-                      }}
+                      style={[
+                        styles.statusOption,
+                        { paddingVertical: spacing.md },
+                      ]}
                     >
-                      {filter.label}
-                    </Chip>
+                      <Text
+                        variant="bodySmall"
+                        style={{
+                          color: selected
+                            ? colors.primary
+                            : colors.foreground,
+                          fontWeight: selected
+                            ? typography.weights.semibold
+                            : typography.weights.regular,
+                        }}
+                      >
+                        {filter.label}
+                      </Text>
+                      {selected ? (
+                        <Ionicons
+                          name="checkmark"
+                          size={18}
+                          color={colors.primary}
+                        />
+                      ) : null}
+                    </Pressable>
                   );
                 })}
               </ScrollView>
             </View>
-          </Card.Content>
-        </Card>
+          </View>
+        </Modal>
 
         <View style={[styles.resultHeading, { gap: spacing.sm }]}>
           <Text variant="titleMedium" style={{ color: colors.foreground }}>
@@ -323,8 +382,8 @@ export default function AdminBlogsPage() {
               <Button
                 mode="outlined"
                 onPress={() => {
-                  if (page === 1) setReloadKey((current) => current + 1);
-                  else setPage(1);
+                    setPage(1);
+                    setReloadKey((current) => current + 1);
                 }}
               >
                 Retry
@@ -377,16 +436,30 @@ export default function AdminBlogsPage() {
           </View>
         )}
 
-        {!loading && hasMore ? (
-          <Button
-            mode="outlined"
-            onPress={() => setPage((current) => current + 1)}
-            loading={loadingMore}
-            disabled={loadingMore}
-            icon="chevron-down"
-          >
-            Load more blogs
-          </Button>
+        {!loading && totalPages > 1 ? (
+          <View style={[styles.pagination, { gap: spacing.md }]}>
+            <Button
+              mode="outlined"
+              onPress={() => handlePageChange(page - 1)}
+              disabled={page <= 1}
+              icon="chevron-left"
+            >
+              Previous
+            </Button>
+            <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
+              Page {page} of {totalPages}
+            </Text>
+            <Button
+              mode="outlined"
+              onPress={() => handlePageChange(page + 1)}
+              disabled={page >= totalPages}
+              icon={({ size, color }) => (
+                <Ionicons name="chevron-forward" size={size} color={color} />
+              )}
+            >
+              Next
+            </Button>
+          </View>
         ) : null}
       </ScrollView>
 
@@ -560,6 +633,35 @@ const styles = StyleSheet.create({
   },
   resultHeading: {
     alignItems: "baseline",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  statusDropdown: {
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  statusModal: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+    padding: 24,
+  },
+  statusMenu: {
+    borderWidth: StyleSheet.hairlineWidth,
+    width: "100%",
+  },
+  statusMenuTitle: {
+    marginBottom: 8,
+  },
+  statusOption: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  pagination: {
+    alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
