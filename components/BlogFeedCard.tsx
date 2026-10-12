@@ -2,7 +2,6 @@ import { Fragment, useState } from "react";
 import {
   Alert,
   Image,
-  Linking,
   Modal,
   Pressable,
   Share,
@@ -10,6 +9,8 @@ import {
   Text,
   View,
 } from "react-native";
+
+import { useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
@@ -147,6 +148,7 @@ export function BlogFeedCard({
   shareUrl,
 }: BlogFeedCardProps) {
   const { colors, spacing, radii, typography } = useTheme();
+  const router = useRouter();
 
   const authorName = blog.author?.name ?? "Unknown Author";
   const authorInitial = authorName.trim().charAt(0).toUpperCase() || "?";
@@ -210,11 +212,7 @@ export function BlogFeedCard({
       return;
     }
 
-    void Linking.openURL(
-      `authors/${authorId}`,
-    ).catch(() =>
-      Alert.alert("Unable to open author profile", "Please try again."),
-    );
+    router.push({ pathname: `/profile/[authorId]`, params: { authorId } });
   };
 
   const closeMenuThen = (action: () => void) => () => {
