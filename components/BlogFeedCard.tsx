@@ -212,7 +212,7 @@ export function BlogFeedCard({
       return;
     }
 
-    router.push({ pathname: `/profile/[id]`, params: { authorId } });
+    router.push({ pathname: "/profile/[id]", params: { id: authorId } });
   };
 
   const closeMenuThen = (action: () => void) => () => {
