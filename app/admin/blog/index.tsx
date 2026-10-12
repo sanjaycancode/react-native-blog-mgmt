@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 
-import { useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -36,6 +36,7 @@ import { useToast } from "@/context/ToastContext";
 import type { AdminBlog } from "@/types/admin";
 
 import { getErrorMessage } from "@/utils/errorMessage";
+import { Blog } from "@/types";
 
 const PAGE_SIZE = 10;
 
@@ -220,7 +221,11 @@ export default function AdminBlogsPage() {
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { padding: spacing.md, paddingBottom: spacing["4xl"], gap: spacing.lg },
+          {
+            padding: spacing.md,
+            paddingBottom: spacing["4xl"],
+            gap: spacing.lg,
+          },
         ]}
         refreshControl={
           <RefreshControl
@@ -336,9 +341,7 @@ export default function AdminBlogsPage() {
                       <Text
                         variant="bodySmall"
                         style={{
-                          color: selected
-                            ? colors.primary
-                            : colors.foreground,
+                          color: selected ? colors.primary : colors.foreground,
                           fontWeight: selected
                             ? typography.weights.semibold
                             : typography.weights.regular,
@@ -382,8 +385,8 @@ export default function AdminBlogsPage() {
               <Button
                 mode="outlined"
                 onPress={() => {
-                    setPage(1);
-                    setReloadKey((current) => current + 1);
+                  setPage(1);
+                  setReloadKey((current) => current + 1);
                 }}
               >
                 Retry
@@ -395,7 +398,10 @@ export default function AdminBlogsPage() {
         {loading ? (
           <View style={[styles.loading, { gap: spacing.md }]}>
             <ActivityIndicator color={colors.primary} />
-            <Text variant="bodyMedium" style={{ color: colors.mutedForeground }}>
+            <Text
+              variant="bodyMedium"
+              style={{ color: colors.mutedForeground }}
+            >
               Loading blogs...
             </Text>
           </View>
@@ -424,10 +430,10 @@ export default function AdminBlogsPage() {
               <AdminBlogCard
                 key={blog._id}
                 blog={blog}
-                onOpen={() => router.push(`/blog/${blog.slug}`)}
-                onFeature={() =>
-                  setConfirmation({ action: "feature", blog })
+                onOpen={() =>
+                 void router.push(`/admin/blog/${encodeURIComponent(blog.slug)}` as Href)
                 }
+                onFeature={() => setConfirmation({ action: "feature", blog })}
                 onUnpublish={() =>
                   setConfirmation({ action: "unpublish", blog })
                 }
@@ -469,7 +475,9 @@ export default function AdminBlogsPage() {
           onDismiss={() => !actionLoading && setConfirmation(null)}
         >
           <Dialog.Title>
-            {confirmation?.action === "feature" ? "Feature blog" : "Unpublish blog"}
+            {confirmation?.action === "feature"
+              ? "Feature blog"
+              : "Unpublish blog"}
           </Dialog.Title>
           <Dialog.Content>
             <Text variant="bodyMedium">

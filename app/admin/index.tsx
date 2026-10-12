@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 
-import { useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 
 import {
   ActivityIndicator,
@@ -267,23 +273,34 @@ export default function AdminOverview() {
                 </Card>
               ) : (
                 submittedBlogs.map((blog) => (
-                  <Card key={blog._id} mode="outlined">
-                    <Card.Content style={{ gap: spacing.sm }}>
-                      <Text variant="titleMedium">{blog.title}</Text>
-                      <Text
-                        variant="bodySmall"
-                        style={{ color: colors.mutedForeground }}
-                      >
-                        By {blog.author?.name ?? "Unknown author"}
-                      </Text>
-                      <View style={[styles.reviewMeta, { gap: spacing.sm }]}>
-                        <Chip compact>
-                          {blog.category?.title ?? "Uncategorized"}
-                        </Chip>
-                        <Chip compact>{blog.status}</Chip>
-                      </View>
-                    </Card.Content>
-                  </Card>
+                  <Pressable
+                    key={blog._id}
+                    accessibilityRole="link"
+                    accessibilityLabel={`Review ${blog.title}`}
+                    onPress={() =>
+                      router.push(
+                        `/admin/blog/${encodeURIComponent(blog.slug)}` as Href,
+                      )
+                    }
+                  >
+                    <Card mode="outlined">
+                      <Card.Content style={{ gap: spacing.sm }}>
+                        <Text variant="titleMedium">{blog.title}</Text>
+                        <Text
+                          variant="bodySmall"
+                          style={{ color: colors.mutedForeground }}
+                        >
+                          By {blog.author?.name ?? "Unknown author"}
+                        </Text>
+                        <View style={[styles.reviewMeta, { gap: spacing.sm }]}>
+                          <Chip compact>
+                            {blog.category?.title ?? "Uncategorized"}
+                          </Chip>
+                          <Chip compact>{blog.status}</Chip>
+                        </View>
+                      </Card.Content>
+                    </Card>
+                  </Pressable>
                 ))
               )}
             </View>
