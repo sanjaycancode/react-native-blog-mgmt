@@ -46,7 +46,7 @@ const navigationItems = [
   {
     label: "Profile",
     icon: "person-circle-outline",
-    href: undefined,
+    href: "/admin/profile",
     available: true,
   },
 ] as const;
