@@ -5,7 +5,6 @@ export interface AdminUser {
   role?: string;
 }
 
-/** Blog data returned by administrator endpoints. */
 export interface AdminBlog {
   _id: string;
   title: string;
@@ -27,7 +26,6 @@ export interface AdminBlog {
   tags: string[];
 }
 
-/** Category data returned by administrator endpoints. */
 export interface AdminCategory {
   _id: string;
   title?: string;
