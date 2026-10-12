@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -328,12 +329,22 @@ export default function AdminUsersPage() {
                         </Text>
                       </View>
                       <View style={{ flex: 1, gap: spacing.xs }}>
-                        <Text
-                          variant="titleMedium"
-                          style={{ color: colors.foreground }}
+                        <Pressable
+                          accessibilityRole="link"
+                          accessibilityLabel={`View ${item.name || "user"} details`}
+                          onPress={() =>
+                            router.push(
+                              `/admin/users/${encodeURIComponent(item._id)}` as Href,
+                            )
+                          }
                         >
-                          {item.name || "Unnamed user"}
-                        </Text>
+                          <Text
+                            variant="titleMedium"
+                            style={{ color: colors.foreground }}
+                          >
+                            {item.name || "Unnamed user"}
+                          </Text>
+                        </Pressable>
                         <Text
                           variant="bodySmall"
                           style={{ color: colors.mutedForeground }}

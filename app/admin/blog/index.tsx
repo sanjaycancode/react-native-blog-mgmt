@@ -431,7 +431,7 @@ export default function AdminBlogsPage() {
                 key={blog._id}
                 blog={blog}
                 onOpen={() =>
-                 void router.push(`/admin/blog/${encodeURIComponent(blog.slug)}` as Href)
+                 void router.push(`/admin/blog/${(blog.slug)}` as Href)
                 }
                 onFeature={() => setConfirmation({ action: "feature", blog })}
                 onUnpublish={() =>
@@ -441,7 +441,6 @@ export default function AdminBlogsPage() {
             ))}
           </View>
         )}
-
         {!loading && totalPages > 1 ? (
           <View style={[styles.pagination, { gap: spacing.md }]}>
             <Button

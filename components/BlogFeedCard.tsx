@@ -311,7 +311,6 @@ export function BlogFeedCard({
         ) : null}
       </View>
 
-      {/* Status + tags row (wraps, shows ALL tags like the web card) */}
       {hasChips ? (
         <View
           style={[

@@ -14,8 +14,8 @@ import {
   ActivityIndicator,
   Button,
   Card,
-  Chip,
   HelperText,
+  Menu,
   Text,
   TextInput,
 } from "react-native-paper";
@@ -53,6 +53,7 @@ export default function CreateAdminUserPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<UserRole>("user");
+  const [roleMenuVisible, setRoleMenuVisible] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -280,16 +281,38 @@ export default function CreateAdminUserPage() {
               </View>
 
               <View style={{ gap: spacing.sm }}>
-                <Text variant="labelLarge" style={{ color: colors.foreground }}>
-                  Role
-                </Text>
-                <View style={[styles.roleOptions, { gap: spacing.sm }]}>
+                <Menu
+                  visible={roleMenuVisible}
+                  onDismiss={() => setRoleMenuVisible(false)}
+                  anchor={
+                    <TextInput
+                      label="Role"
+                      mode="outlined"
+                      value={role === "admin" ? "Admin" : "User"}
+                      editable={false}
+                      disabled={creating}
+                      right={
+                        <TextInput.Icon
+                          icon={roleMenuVisible ? "chevron-up" : "chevron-down"}
+                          onPress={() =>
+                            setRoleMenuVisible((visible) => !visible)
+                          }
+                        />
+                      }
+                      onPressIn={() => setRoleMenuVisible(true)}
+                    />
+                  }
+                >
                   {(["user", "admin"] as const).map((option) => (
-                    <Chip
+                    <Menu.Item
                       key={option}
-                      selected={role === option}
+                      title={option === "admin" ? "Admin" : "User"}
+                      leadingIcon={
+                        role === option ? "check" : undefined
+                      }
                       onPress={() => {
                         setRole(option);
+                        setRoleMenuVisible(false);
                         if (submitted) {
                           setErrors((current) => ({
                             ...current,
@@ -297,16 +320,9 @@ export default function CreateAdminUserPage() {
                           }));
                         }
                       }}
-                      disabled={creating}
-                      style={{
-                        backgroundColor:
-                          role === option ? colors.secondary : colors.muted,
-                      }}
-                    >
-                      {option === "admin" ? "Admin" : "User"}
-                    </Chip>
+                    />
                   ))}
-                </View>
+                </Menu>
                 {errors.role ? (
                   <HelperText type="error" visible>
                     {errors.role}
@@ -377,9 +393,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "flex-end",
-  },
-  roleOptions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
   },
 });

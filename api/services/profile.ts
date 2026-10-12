@@ -1,4 +1,5 @@
 import { ApiResponse, Blog } from "@/types";
+
 import { apiClient } from "../client";
 
 export interface ProfileUser {
@@ -16,7 +17,7 @@ export interface SocialLinks {
 
 export interface ProfileData {
   user?: ProfileUser;
-  avatar?: string;
+  avatar?: string | { key?: string; url?: string };
   bio?: string;
   isVerified?: boolean;
   socialLinks?: SocialLinks;
