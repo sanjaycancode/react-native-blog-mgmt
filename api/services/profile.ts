@@ -50,6 +50,12 @@ export const profileApi = {
     });
   },
 
+  getById(userId: string) {
+    return apiClient<ProfileResponse>(`/profile/${userId}`, {
+      method: "GET",
+    });
+  },
+
   removeSavedBlog(blogId: string) {
     return apiClient<ProfileResponse>(`/profile/saved-blogs/${blogId}`, {
       method: "DELETE",
