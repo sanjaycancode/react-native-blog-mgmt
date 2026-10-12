@@ -10,6 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.example.expoboilerplate",
+      "associatedDomains": ["applinks:og-ncc19.vercel.app"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -19,9 +20,29 @@
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#EDE9FE"
       },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "og-ncc19.vercel.app",
+              "pathPrefix": "/profile"
+            },
+            {
+              "scheme": "https",
+              "host": "og-ncc19.vercel.app",
+              "pathPrefix": "/reset-password"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "package": "com.example.expoboilerplate",
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
       ]
     },
     "web": {

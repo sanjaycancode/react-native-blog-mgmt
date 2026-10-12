@@ -12,7 +12,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import BottomNav from "@/components/NavBar";
 import HomeHeader from "@/components/home/HomeHeader";
 import GridFeed, { GridSkeleton } from "@/components/profile/GridFeed";
 import Button from "@/components/ThemedButton";
@@ -419,7 +418,6 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <BottomNav />
     </SafeAreaView>
   );
 }

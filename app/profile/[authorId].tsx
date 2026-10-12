@@ -14,7 +14,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { Appbar, Card, Text } from "react-native-paper";
 
 import BlogFeedCard from "@/components/BlogFeedCard";
-import Navbar from "@/components/NavBar";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
 
 import { blogApi } from "@/api/services";
@@ -243,7 +242,6 @@ export default function AuthorProfilePage() {
           ) : null
         }
       />
-      <Navbar />
     </ThemedSafeAreaView>
   );
 }
