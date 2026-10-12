@@ -34,13 +34,13 @@ const navigationItems = [
   {
     label: "Categories",
     icon: "pricetags-outline",
-    href: undefined,
+    href: "/admin/category",
     available: true,
   },
   {
     label: "Users",
     icon: "people-outline",
-    href: undefined,
+    href: "/admin/users",
     available: true,
   },
   {

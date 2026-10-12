@@ -212,7 +212,7 @@ export function BlogFeedCard({
       return;
     }
 
-    router.push({ pathname: `/profile/[authorId]`, params: { authorId } });
+    router.push({ pathname: "/profile/[id]", params: { id: authorId } });
   };
 
   const closeMenuThen = (action: () => void) => () => {
@@ -311,7 +311,6 @@ export function BlogFeedCard({
         ) : null}
       </View>
 
-      {/* Status + tags row (wraps, shows ALL tags like the web card) */}
       {hasChips ? (
         <View
           style={[
