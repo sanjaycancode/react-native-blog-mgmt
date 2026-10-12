@@ -7,6 +7,7 @@
     "base": {
       "node": "22.14.0"
     },
+    
     "development": {
       "extends": "base",
       "environment": "development",
@@ -16,13 +17,17 @@
       }
     },
     "staging-preview": {
-      "extends": "base",
-      "environment": "staging",
-      "channel": "staging",
-      "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://staging.example.com/api"
-      }
-    },
+  "extends": "base",
+  "distribution": "internal",
+  "environment": "staging",
+  "channel": "staging",
+  "android": {
+    "buildType": "apk"
+  },
+  "env": {
+    "EXPO_PUBLIC_API_BASE_URL": "https://staging.example.com/api"
+  }
+},
     "production": {
       "extends": "base",
       "environment": "production",

@@ -1,12 +1,15 @@
-import { Redirect, Stack } from "expo-router";
+import { Redirect, Stack, usePathname } from "expo-router";
 
 import { useAuth } from "@/context/AuthContext";
 
 export default function AuthLayout() {
   const { isAuthenticated, isInitializing } = useAuth();
+  const pathname = usePathname();
 
   if (isInitializing) return null;
-  if (!isAuthenticated) return <Redirect href="/login" />;
+  if (!isAuthenticated && pathname !== "/register") {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <Stack>

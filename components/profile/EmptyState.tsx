@@ -37,9 +37,12 @@ const COPY: Record<
 type Props = {
   type: ProfileTab;
   onAction?: () => void;
+  /** Optional copy overrides, e.g. for visitors viewing someone else's page. */
+  title?: string;
+  body?: string;
 };
 
-export default function EmptyState({ type, onAction }: Props) {
+export default function EmptyState({ type, onAction, title, body }: Props) {
   const { colors, typography, spacing } = useTheme();
   const copy = COPY[type];
 
@@ -90,7 +93,7 @@ export default function EmptyState({ type, onAction }: Props) {
           textAlign: "center",
         }}
       >
-        {copy.title}
+        {title ?? copy.title}
       </Text>
       <Text
         style={{
@@ -101,7 +104,7 @@ export default function EmptyState({ type, onAction }: Props) {
           textAlign: "center",
         }}
       >
-        {copy.body}
+        {body ?? copy.body}
       </Text>
 
       {!!copy.cta && !!onAction && (

@@ -19,7 +19,10 @@
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#EDE9FE"
       },
-      "package": "com.example.expoboilerplate"
+      "package": "com.example.expoboilerplate",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -49,14 +52,16 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "TODO-replace-with-eas-project-id"
-      }
+        "projectId": "ca4341fe-c734-44c7-ab29-ef9887e0f451"
+      },
+      "API_URL": "http://localhost:5000/api"
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/TODO-replace-with-eas-project-id"
-    }
+      "url": "https://u.expo.dev/ca4341fe-c734-44c7-ab29-ef9887e0f451"
+    },
+    "owner": "amrtz"
   }
 }

@@ -17,7 +17,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-
+import { Blog } from "@/types";
 import { useTheme } from "@/constants/theme";
 
 import { imgSrc } from "@/utils/getImgSrc";
