@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
 import { useRouter } from "expo-router";
 
@@ -18,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { AdminShell } from "@/components/admin/AdminShell";
+import { AdminShell } from "@/app/admin/AdminShell";
 
 import { adminApi } from "@/api/services/admin";
 import { categoryApi } from "@/api/services/category";
@@ -74,7 +69,9 @@ export default function AdminOverview() {
       const nextBlogs = blogsResponse.data.result;
       const nextCategories = categoriesResponse.data.result;
       if (!Array.isArray(nextBlogs) || !Array.isArray(nextCategories)) {
-        throw new Error("The admin dashboard response has an unexpected format.");
+        throw new Error(
+          "The admin dashboard response has an unexpected format.",
+        );
       }
 
       setBlogs(nextBlogs);
@@ -101,7 +98,7 @@ export default function AdminOverview() {
     }
 
     void loadDashboard();
-  }, [user,isAdmin, isInitializing, loadDashboard, router]);
+  }, [user, isAdmin, isInitializing, loadDashboard, router]);
 
   const stats = useMemo<DashboardStats>(
     () => ({
@@ -124,18 +121,15 @@ export default function AdminOverview() {
     return Array.from(counts, ([label, value]) => ({ label, value }));
   }, [blogs, categories]);
 
-  const blogsByStatus = useMemo<BarEntry[]>(
-    () => {
-      const counts = new Map<string, number>(
-        STATUSES.map((status) => [status, 0]),
-      );
-      blogs.forEach((blog) => {
-        counts.set(blog.status, (counts.get(blog.status) ?? 0) + 1);
-      });
-      return Array.from(counts, ([label, value]) => ({ label, value }));
-    },
-    [blogs],
-  );
+  const blogsByStatus = useMemo<BarEntry[]>(() => {
+    const counts = new Map<string, number>(
+      STATUSES.map((status) => [status, 0]),
+    );
+    blogs.forEach((blog) => {
+      counts.set(blog.status, (counts.get(blog.status) ?? 0) + 1);
+    });
+    return Array.from(counts, ([label, value]) => ({ label, value }));
+  }, [blogs]);
 
   const submittedBlogs = useMemo(
     () => blogs.filter((blog) => blog.status === "submitted"),
@@ -425,7 +419,10 @@ function CategoryDonutChart({ data }: { data: BarEntry[] }) {
                   </Text>
                   <Text
                     variant="labelSmall"
-                    style={[styles.legendPercent, { color: colors.mutedForeground }]}
+                    style={[
+                      styles.legendPercent,
+                      { color: colors.mutedForeground },
+                    ]}
                   >
                     {total > 0
                       ? `${Math.round((segment.value / total) * 100)}%`
@@ -541,8 +538,7 @@ function StatusBarChart({ data }: { data: BarEntry[] }) {
                 ))}
                 <View style={styles.barColumns}>
                   {data.map((entry) => {
-                    const barHeight =
-                      (entry.value / maxValue) * barMaxHeight;
+                    const barHeight = (entry.value / maxValue) * barMaxHeight;
                     return (
                       <View key={entry.label} style={styles.barColumn}>
                         {entry.value > 0 ? (
@@ -581,10 +577,7 @@ function StatusBarChart({ data }: { data: BarEntry[] }) {
                   key={entry.label}
                   numberOfLines={1}
                   variant="labelSmall"
-                  style={[
-                    styles.barLabel,
-                    { color: colors.mutedForeground },
-                  ]}
+                  style={[styles.barLabel, { color: colors.mutedForeground }]}
                 >
                   {entry.label}
                 </Text>

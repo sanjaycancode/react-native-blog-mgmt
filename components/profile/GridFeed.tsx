@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import {
+  type DimensionValue,
   Image,
   Pressable,
   StyleSheet,
   Text,
   View,
-  type DimensionValue,
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
@@ -80,77 +80,78 @@ export function GridCard({
   return (
     <Animated.View
       entering={FadeInDown.delay(Math.min(index, 8) * 35).duration(240)}
-      style={[styles.cardWrap, width !== undefined && { width }, animatedStyle]}
+      style={[styles.cardWrap, width !== undefined && { width }]}
     >
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        delayLongPress={350}
-        onPressIn={() => (scale.value = withSpring(0.95, SPRING))}
-        onPressOut={() => (scale.value = withSpring(1, SPRING))}
-        disabled={busy}
-        accessibilityRole="button"
-        accessibilityLabel={blog.title}
-        style={[
-          styles.card,
-          {
-            backgroundColor: colors.secondary,
-            borderColor: colors.border,
-            opacity: busy ? 0.5 : 1,
-          },
-        ]}
-      >
-        {hasImage ? (
-          <Image
-            source={{ uri: imgSrc(blog.image as string) }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
-            <Ionicons
-              name="document-text-outline"
-              size={36}
-              color={colors.mutedForeground}
+      <Animated.View style={animatedStyle}>
+        <Pressable
+          onPress={onPress}
+          onLongPress={onLongPress}
+          delayLongPress={350}
+          onPressIn={() => (scale.value = withSpring(0.95, SPRING))}
+          onPressOut={() => (scale.value = withSpring(1, SPRING))}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel={blog.title}
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.secondary,
+              borderColor: colors.border,
+              opacity: busy ? 0.5 : 1,
+            },
+          ]}
+        >
+          {hasImage ? (
+            <Image
+              source={{ uri: imgSrc(blog.image as string) }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
             />
-          </View>
-        )}
-
-        {type === "drafts" && (
-          <View style={styles.pill}>
-            <Ionicons name="lock-closed" size={10} color="#fff" />
-            <Text style={styles.pillText}>Draft</Text>
-          </View>
-        )}
-
-        {/* Translucent caption plate */}
-        <View style={styles.caption}>
-          {!!categoryTitle(blog) && (
-            <Text numberOfLines={1} style={styles.captionMeta}>
-              {categoryTitle(blog)}
-            </Text>
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
+              <Ionicons
+                name="document-text-outline"
+                size={36}
+                color={colors.mutedForeground}
+              />
+            </View>
           )}
-          <Text
-            numberOfLines={2}
-            style={{
-              color: "#fff",
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.bold,
-              lineHeight: 18,
-            }}
-          >
-            {blog.title}
-          </Text>
-          {showAuthor && !!authorName(blog) && (
+
+          {type === "drafts" && (
+            <View style={styles.pill}>
+              <Ionicons name="lock-closed" size={10} color="#fff" />
+              <Text style={styles.pillText}>Draft</Text>
+            </View>
+          )}
+
+          <View style={styles.caption}>
+            {!!categoryTitle(blog) && (
+              <Text numberOfLines={1} style={styles.captionMeta}>
+                {categoryTitle(blog)}
+              </Text>
+            )}
             <Text
-              numberOfLines={1}
-              style={[styles.captionMeta, { marginTop: 3, marginBottom: 0 }]}
+              numberOfLines={2}
+              style={{
+                color: "#fff",
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.bold,
+                lineHeight: 18,
+              }}
             >
-              by {authorName(blog)}
+              {blog.title}
             </Text>
-          )}
-        </View>
-      </Pressable>
+            {showAuthor && !!authorName(blog) && (
+              <Text
+                numberOfLines={1}
+                style={[styles.captionMeta, { marginTop: 3, marginBottom: 0 }]}
+              >
+                by {authorName(blog)}
+              </Text>
+            )}
+          </View>
+        </Pressable>
+      </Animated.View>
     </Animated.View>
   );
 }
