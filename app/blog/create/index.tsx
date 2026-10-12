@@ -10,7 +10,6 @@ import FormField from "@/components/forms/FormField";
 import FormImagePicker from "@/components/forms/FormImagePicker";
 import FormSelect from "@/components/forms/FormSelect";
 import RichTextEditor from "@/components/forms/RichTextEditor";
-import  Navbar  from "@/components/NavBar";
 import { ThemedButton } from "@/components/ThemedButton";
 import  ThemedCard  from "@/components/ThemedCard";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
@@ -185,8 +184,6 @@ export default function CreateBlogPage() {
             Checking your account…
           </ThemedText>
         </View>
-        <Navbar />
-
       </ThemedSafeAreaView>
     );
   }
@@ -215,8 +212,6 @@ export default function CreateBlogPage() {
             onPress={() => router.push("/login")}
           />
         </View>
-        <Navbar />
-
       </ThemedSafeAreaView>
     );
   }
@@ -440,8 +435,6 @@ export default function CreateBlogPage() {
           </View>
         </ThemedCard>
       </ScrollView>
-      <Navbar />
-
     </ThemedSafeAreaView>
   );
 }

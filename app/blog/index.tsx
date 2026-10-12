@@ -15,7 +15,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import BlogFeedCard from "@/components/BlogFeedCard";
-import Navbar from "@/components/NavBar";
 import SearchBox from "@/components/SearchBox";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
@@ -475,8 +474,6 @@ export default function BlogsPage() {
           ) : null
         }
       />
-        <Navbar/>
-
     </ThemedSafeAreaView>
   );
 }

@@ -18,7 +18,6 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import Navbar from "@/components/NavBar";
 import Button from "@/components/ThemedButton";
 import Card from "@/components/ThemedCard";
 
@@ -186,8 +185,6 @@ export default function RegisterScreen() {
       edges={["top", "left", "right"]}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <Navbar />
-
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

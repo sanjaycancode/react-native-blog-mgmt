@@ -17,7 +17,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import RenderHTML from "@native-html/render";
 
-import  Navbar  from "@/components/NavBar";
 import SaveBlogButton from "@/components/SaveBlogButton";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
@@ -322,8 +321,6 @@ export default function BlogDetailPage() {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
         <DetailSkeleton />
-        <Navbar />
-
       </ThemedSafeAreaView>
     );
   }
@@ -360,8 +357,6 @@ export default function BlogDetailPage() {
             onPress={() => router.replace("/blog")}
           />
         </View>
-        <Navbar />
-
       </ThemedSafeAreaView>
     );
   }
@@ -746,8 +741,6 @@ export default function BlogDetailPage() {
           </View>
         </View>
       </Modal>
-      <Navbar />
-
     </ThemedSafeAreaView>
   );
 }

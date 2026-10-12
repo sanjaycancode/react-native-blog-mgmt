@@ -15,7 +15,6 @@ import FormField from "@/components/forms/FormField";
 import FormImagePicker from "@/components/forms/FormImagePicker";
 import FormSelect from "@/components/forms/FormSelect";
 import RichTextEditor from "@/components/forms/RichTextEditor";
-import { Navbar } from "@/components/NavBar";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedCard } from "@/components/ThemedCard";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
@@ -254,7 +253,6 @@ export default function EditBlogPage() {
   if (isInitializing || fetching) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <Navbar />
         <View style={[styles.centered, { padding: spacing.xl }]}>
           <ThemedText variant="bodySmall" semantic="muted">
             {isInitializing ? "Checking your account..." : "Loading blog..."}
@@ -267,7 +265,6 @@ export default function EditBlogPage() {
   if (!isAuthenticated || !session) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <Navbar />
         <View style={[styles.centered, { padding: spacing.xl, gap: spacing.md }]}>
           <Ionicons
             name="lock-closed-outline"
@@ -289,7 +286,6 @@ export default function EditBlogPage() {
   if (error && !blog) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <Navbar />
         <View style={[styles.centered, { padding: spacing.xl, gap: spacing.md }]}>
           <ThemedText variant="heading5" style={styles.centerText}>
             Unable to load blog
@@ -316,7 +312,6 @@ export default function EditBlogPage() {
   if (blog.author?._id !== session.user.id) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <Navbar />
         <View style={[styles.centered, { padding: spacing.xl, gap: spacing.md }]}>
           <Ionicons
             name="alert-circle-outline"
@@ -340,7 +335,6 @@ export default function EditBlogPage() {
 
   return (
     <ThemedSafeAreaView edges={["top", "left", "right"]}>
-      <Navbar />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[

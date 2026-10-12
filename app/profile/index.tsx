@@ -28,7 +28,6 @@ import { useTheme } from "@/constants/theme";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import type { Blog } from "@/types";
-import Navbar from "@/components/NavBar";
 import { useAuth } from "@/context/AuthContext";
 
 // Your theme has no "destructive" token, so errors use this fixed red.
@@ -350,7 +349,6 @@ export default function ProfileScreen() {
           )}
         </View>
       </ScrollView>
-      <Navbar />
     </SafeAreaView>
   );
 }

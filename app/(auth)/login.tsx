@@ -15,7 +15,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import Navbar from "@/components/NavBar";
 import Button from "@/components/ThemedButton";
 import Card from "@/components/ThemedCard";
 
@@ -162,8 +161,6 @@ export default function LoginScreen() {
       edges={["top", "left", "right"]}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <Navbar />
-
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -327,6 +324,27 @@ export default function LoginScreen() {
                 </View>
                 {renderError("password")}
               </View>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/forgot-password",
+                    params: { email: values.email.trim() },
+                  })
+                }
+                hitSlop={8}
+                accessibilityRole="link"
+                style={{ alignSelf: "flex-end", marginTop: spacing.sm }}
+              >
+                <Text
+                  style={{
+                    color: colors.primary,
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.semibold,
+                  }}
+                >
+                  Forgot password?
+                </Text>
+              </Pressable>
 
               <Button
                 title={isSubmitting ? "Logging in..." : "Log in"}
