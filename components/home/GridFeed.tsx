@@ -75,6 +75,7 @@ type Props = {
   busyId?: string | null;
   onPressItem: (blog: Blog) => void;
   onLongPressItem?: (blog: Blog) => void;
+  onRemoveSaved?: (blog: Blog) => void;
   onEmptyAction?: () => void;
   showAuthor?: boolean;
 };
@@ -89,6 +90,7 @@ export function GridCard({
   ratio = 4 / 3,
   onPress,
   onLongPress,
+  onRemoveSaved,
 }: {
   blog: Blog;
   index: number;
@@ -99,6 +101,7 @@ export function GridCard({
   ratio?: number;
   onPress: () => void;
   onLongPress?: () => void;
+  onRemoveSaved?: () => void;
 }) {
   const { colors, typography } = useTheme();
   const scale = useSharedValue(1);
@@ -155,6 +158,24 @@ export function GridCard({
             </View>
           )}
 
+          {type === "saved" && onRemoveSaved && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${blog.title} from saved blogs`}
+              hitSlop={8}
+              onPress={(event) => {
+                event.stopPropagation();
+                onRemoveSaved();
+              }}
+              style={[
+                styles.saveOverlay,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name="bookmark" size={16} color={colors.primary} />
+            </Pressable>
+          )}
+
           <View style={styles.caption}>
             {!!categoryTitle(blog) && (
               <Text numberOfLines={1} style={styles.captionMeta}>
@@ -193,6 +214,7 @@ export default function GridFeed({
   busyId,
   onPressItem,
   onLongPressItem,
+  onRemoveSaved,
   onEmptyAction,
   showAuthor,
 }: Props) {
@@ -217,6 +239,9 @@ export default function GridFeed({
           onPress={() => onPressItem(blog)}
           onLongPress={
             onLongPressItem ? () => onLongPressItem(blog) : undefined
+          }
+          onRemoveSaved={
+            onRemoveSaved ? () => onRemoveSaved(blog) : undefined
           }
         />
       ))}
@@ -312,6 +337,17 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 10,
     fontWeight: "700",
+  },
+  saveOverlay: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    width: 32,
+    height: 32,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
   },
   caption: {
     margin: 6,

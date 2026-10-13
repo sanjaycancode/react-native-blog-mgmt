@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -17,13 +18,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { blogApi } from "@/api/services/blog";
 
+import { useTheme } from "@/constants/theme";
+
 import { useAuth } from "@/context/AuthContext";
 
 import { type Blog } from "@/types";
 
 import { imgSrc } from "@/utils/getImgSrc";
 
-import { T } from "./appTheme"; // move appTheme.ts here (or fix this path)
+import { getDraftTheme } from "./appTheme";
 
 // The backend populates author + category on this endpoint.
 type DraftDetail = Omit<Blog, "author" | "category"> & {
@@ -34,6 +37,7 @@ type DraftDetail = Omit<Blog, "author" | "category"> & {
   category?: { _id: string; title: string };
 };
 
+type ReviewStatus = "submitted" | "rejected";
 type ViewState = "loading" | "ready" | "notfound" | "error";
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -65,14 +69,30 @@ function toParagraphs(raw?: string): string[] {
 }
 
 // ── screen ─────────────────────────────────────────────────────────────────
-export default function DraftDetailScreen() {
+export default function DraftDetailScreen({
+  forcedStatus,
+}: {
+  forcedStatus?: ReviewStatus;
+}) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { colors, isDark } = useTheme();
+  const T = useMemo(() => getDraftTheme(colors), [colors]);
+  const s = useMemo(() => createStyles(T), [T]);
+  const { slug, status: statusParam } = useLocalSearchParams<{
+    slug: string;
+    status?: string;
+  }>();
   const { isAuthenticated, isInitializing } = useAuth();
 
   const [draft, setDraft] = useState<DraftDetail | null>(null);
   const [state, setState] = useState<ViewState>("loading");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const reviewStatus =
+    forcedStatus ??
+    (statusParam === "submitted" || statusParam === "rejected"
+      ? statusParam
+      : null);
 
   useEffect(() => {
     if (!isInitializing && !isAuthenticated) router.replace("/login");
@@ -81,7 +101,9 @@ export default function DraftDetailScreen() {
   const load = useCallback(async () => {
     if (!slug) return;
     try {
-      const res = await blogApi.getDraftBySlug(slug);
+      const res = reviewStatus
+        ? await blogApi.getBySlug(slug)
+        : await blogApi.getDraftBySlug(slug);
       setDraft(res.data.result as unknown as DraftDetail);
       setState("ready");
     } catch (e) {
@@ -90,7 +112,7 @@ export default function DraftDetailScreen() {
       setDraft(null);
       setState(code === 404 ? "notfound" : "error");
     }
-  }, [slug]);
+  }, [reviewStatus, slug]);
 
   // Refetch on every focus so edits made in the editor show up when you come back.
   useFocusEffect(
@@ -113,7 +135,32 @@ export default function DraftDetailScreen() {
   const cover = coverSource ? imgSrc(coverSource, "blog") : null;
 
   // Adjust to your real edit route (same one the drafts list uses).
-  const edit = () => router.push(`/profile/drafts/edit/${slug}`);
+  const edit = () =>
+    router.push(
+      reviewStatus ? `/blog/${slug}/edit` : `/profile/drafts/edit/${slug}`,
+    );
+
+  const handleDelete = () => {
+    if (!draft || isDeleting) return;
+    Alert.alert("Delete this blog?", "This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          setIsDeleting(true);
+          try {
+            await blogApi.delete(draft._id);
+            router.back();
+          } catch {
+            Alert.alert("Couldn't delete blog", "Please try again.");
+          } finally {
+            setIsDeleting(false);
+          }
+        },
+      },
+    ]);
+  };
 
   if (isInitializing || !isAuthenticated) {
     return (
@@ -129,7 +176,13 @@ export default function DraftDetailScreen() {
         <Ionicons name="chevron-back" size={24} color={T.text} />
       </Pressable>
       <View style={s.badge}>
-        <Text style={s.badgeText}>Draft</Text>
+        <Text style={s.badgeText}>
+          {reviewStatus === "submitted"
+            ? "Submitted"
+            : reviewStatus === "rejected"
+              ? "Rejected"
+              : "Draft"}
+        </Text>
       </View>
       <View style={{ flex: 1 }} />
       <View style={s.privateRow}>
@@ -142,7 +195,7 @@ export default function DraftDetailScreen() {
   if (state === "loading") {
     return (
       <View style={s.screen}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
         {Header}
         <View style={[s.center, { flex: 1 }]}>
           <ActivityIndicator color={T.primary} />
@@ -155,7 +208,7 @@ export default function DraftDetailScreen() {
     const notFound = state === "notfound";
     return (
       <View style={s.screen}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
         {Header}
         <View
           style={[
@@ -171,11 +224,13 @@ export default function DraftDetailScreen() {
             />
           </View>
           <Text style={s.stateTitle}>
-            {notFound ? "Draft not found" : "Couldn't load this draft"}
+            {notFound
+              ? `${reviewStatus ? reviewStatus[0].toUpperCase() + reviewStatus.slice(1) : "Draft"} not found`
+              : `Couldn't load this ${reviewStatus ?? "draft"}`}
           </Text>
           <Text style={s.stateBody}>
             {notFound
-              ? "It may have been published or deleted, or it isn't one of your drafts."
+              ? "It may have been published or deleted, or it isn't one of your blogs."
               : "Check your connection and try again."}
           </Text>
           <Pressable
@@ -195,12 +250,12 @@ export default function DraftDetailScreen() {
 
   return (
     <View style={s.screen}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       {Header}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 82 }}
       >
         {cover ? <Image source={{ uri: cover }} style={s.cover} /> : null}
 
@@ -260,20 +315,49 @@ export default function DraftDetailScreen() {
 
       {/* Sticky action */}
       <View style={[s.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <Pressable
-          style={({ pressed }) => [s.cta, pressed && { opacity: 0.9 }]}
-          onPress={edit}
-        >
-          <Ionicons name="create" size={18} color="#fff" />
-          <Text style={s.ctaText}>Continue editing</Text>
-        </Pressable>
+        {reviewStatus ? (
+          <View style={s.reviewActions}>
+            <Pressable
+              accessibilityLabel="Edit blog"
+              onPress={edit}
+              style={({ pressed }) => [s.iconAction, pressed && { opacity: 0.65 }]}
+            >
+              <Ionicons name="create-outline" size={20} color={T.primaryDark} />
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Delete blog"
+              disabled={isDeleting}
+              onPress={handleDelete}
+              style={({ pressed }) => [
+                s.iconAction,
+                pressed && { opacity: 0.65 },
+                isDeleting && { opacity: 0.6 },
+              ]}
+            >
+              {isDeleting ? (
+                <ActivityIndicator color={T.primaryDark} size="small" />
+              ) : (
+                <Ionicons name="trash-outline" size={20} color={T.primaryDark} />
+              )}
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            style={({ pressed }) => [s.cta, pressed && { opacity: 0.9 }]}
+            onPress={edit}
+          >
+            <Ionicons name="create" size={18} color="#fff" />
+            <Text style={s.ctaText}>Continue editing</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
 }
 
 // ── styles ─────────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
+const createStyles = (T: ReturnType<typeof getDraftTheme>) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: T.bg },
   center: { alignItems: "center", justifyContent: "center" },
 
@@ -302,8 +386,8 @@ const s = StyleSheet.create({
   privateRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   privateText: { color: T.mute, fontSize: 12.5 },
 
-  cover: { width: "100%", height: 220, backgroundColor: T.border },
-  body: { paddingHorizontal: 22, paddingTop: 24 },
+  cover: { width: "100%", height: 190, backgroundColor: T.border },
+  body: { paddingHorizontal: 20, paddingTop: 18 },
 
   category: {
     alignSelf: "flex-start",
@@ -312,34 +396,34 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 99,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   categoryText: { color: T.primary, fontSize: 12.5, fontWeight: "700" },
 
   title: {
     color: T.text,
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "800",
     letterSpacing: -0.8,
-    lineHeight: 37,
+    lineHeight: 33,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
     gap: 6,
-    marginTop: 12,
+    marginTop: 9,
   },
   meta: { color: T.sub, fontSize: 13.5 },
   metaDot: { color: T.mute, fontSize: 13.5 },
 
-  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 },
+  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
   tag: {
     backgroundColor: T.surface,
     borderWidth: 1,
     borderColor: T.border,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 99,
   },
   tagText: { color: T.sub, fontSize: 12.5 },
@@ -347,7 +431,7 @@ const s = StyleSheet.create({
   rule: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: T.border,
-    marginVertical: 24,
+    marginVertical: 18,
   },
   paragraph: { color: T.text, fontSize: 17, lineHeight: 28, marginBottom: 18 },
 
@@ -359,11 +443,10 @@ const s = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    backgroundColor: T.bg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: T.border,
+    alignItems: "flex-end",
+    paddingHorizontal: 22,
+    paddingTop: 8,
+    backgroundColor: "transparent",
   },
   cta: {
     flexDirection: "row",
@@ -372,9 +455,26 @@ const s = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: T.primary,
     borderRadius: 99,
-    paddingVertical: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
-  ctaText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  ctaText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  reviewActions: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  iconAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.border,
+  },
 
   stateIcon: {
     width: 72,
@@ -400,4 +500,4 @@ const s = StyleSheet.create({
     borderRadius: 99,
   },
   stateBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-});
+  });

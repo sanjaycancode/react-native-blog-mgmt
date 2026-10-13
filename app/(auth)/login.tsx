@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -11,16 +11,17 @@ import {
   View,
 } from "react-native";
 
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "@/components/ThemedButton";
 import Card from "@/components/ThemedCard";
 
-import { useAuth } from "@/context/AuthContext"; // adjust to where your AuthContext lives
-
 import { useTheme } from "@/constants/theme";
+
+import { useAuth } from "@/context/AuthContext"; // adjust to where your AuthContext lives
 
 import { getErrorMessage } from "@/utils/errorMessage";
 
@@ -47,9 +48,9 @@ function validate(values: FormValues): Partial<Record<FieldName, string>> {
 }
 
 export default function LoginScreen() {
-  const { colors, typography, spacing, radii } = useTheme();
+  const { colors, typography, spacing } = useTheme();
   const router = useRouter();
-  const { login, isAuthenticated } = useAuth();
+  const { login } = useAuth();
   const ADMIN_ROLE = "admin";
 
   const [values, setValues] = useState<FormValues>({
@@ -171,67 +172,39 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={[styles.header, { padding: spacing.xl }]}>
-            <View
-              pointerEvents="none"
-              style={[styles.glowLarge, { backgroundColor: colors.primary }]}
-            />
-            <View
-              pointerEvents="none"
-              style={[styles.glowSmall, { backgroundColor: colors.primary }]}
-            />
+          <Pressable
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.replace("/")
+            }
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={[
+              styles.backButton,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.foreground} />
+          </Pressable>
 
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: colors.secondary,
-                  borderColor: colors.border,
-                  borderRadius: radii.full,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.xs,
-                  marginBottom: spacing.md,
-                },
-              ]}
-            >
-              <Ionicons name="book-outline" size={14} color={colors.primary} />
-              <Text
-                style={{
-                  color: colors.secondaryForeground,
-                  fontSize: typography.sizes.xs,
-                  fontWeight: typography.weights.semibold,
-                }}
-              >
-                Good to see you again
-              </Text>
-            </View>
-
+          <View style={[styles.intro, { marginBottom: spacing.md }]}>
             <Text
-              style={[
-                styles.title,
-                {
-                  color: colors.foreground,
-                  fontSize: typography.sizes["3xl"],
-                  fontWeight: typography.weights.heavy,
-                  lineHeight: 38,
-                },
-              ]}
+              style={{
+                color: colors.foreground,
+                fontSize: typography.sizes["2xl"],
+                fontWeight: typography.weights.heavy,
+              }}
             >
-              Welcome back,{"\n"}
-              <Text style={{ color: colors.primary }}>keep writing.</Text>
+              Welcome back
             </Text>
-
             <Text
               style={{
                 color: colors.mutedForeground,
-                fontSize: typography.sizes.base,
-                lineHeight: 24,
-                marginTop: spacing.md,
+                fontSize: typography.sizes.sm,
+                marginTop: spacing.xs,
               }}
             >
-              Log in to pick up your drafts, publish new stories, and read what
-              the community has been up to.
+              Sign in to continue.
             </Text>
           </View>
 
@@ -389,39 +362,24 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   contentContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
     paddingBottom: 40,
+    paddingTop: 24,
   },
-  header: {
-    position: "relative",
-    overflow: "hidden",
+  intro: {
+    paddingHorizontal: 24,
   },
-  glowLarge: {
+  backButton: {
     position: "absolute",
-    right: -50,
-    top: -50,
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    opacity: 0.12,
-  },
-  glowSmall: {
-    position: "absolute",
-    right: 60,
-    top: 70,
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    opacity: 0.1,
-  },
-  badge: {
-    flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 6,
+    justifyContent: "center",
+    left: 24,
+    top: 18,
+    width: 40,
+    height: 40,
     borderWidth: 1,
-  },
-  title: {
-    letterSpacing: -0.5,
+    borderRadius: 20,
   },
   inputShell: {
     flexDirection: "row",
