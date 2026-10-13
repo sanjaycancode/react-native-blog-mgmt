@@ -60,6 +60,8 @@ export const blogApi = {
     return apiClient<ApiResponse<Blog>>("/blog/create", {
       method: "POST",
       data,
+      headers: { "Content-Type": "multipart/form-data" },
+
     });
   },
 
@@ -108,6 +110,8 @@ export const blogApi = {
     return apiClient<ApiResponse<Blog>>(`/blog/${id}`, {
       method: "PUT",
       data,
+      headers: { "Content-Type": "multipart/form-data" }
+
     });
   },
 
@@ -122,6 +126,8 @@ export const blogApi = {
     return apiClient<ApiResponse<Blog>>(`/blog/slug/${slug}`, {
       method: "PUT",
       data,
+      headers: { "Content-Type": "multipart/form-data" },
+
     });
   },
 
