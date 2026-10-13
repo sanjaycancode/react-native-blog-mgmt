@@ -11,27 +11,30 @@ import {
   TextStyle,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useRouter } from "expo-router";
+
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useAuth } from "@/context/AuthContext";
-import { imgSrc } from "@/utils/getImgSrc";
-
-import { STATUS_COLORS, STATUS_LABELS } from "@/components/analytics/theme";
+import { BarChart, HBarList } from "@/components/analytics/barchart";
+import { DonutChart } from "@/components/analytics/donutchart";
+import { LineChart } from "@/components/analytics/LineChart";
+import { type Status,STATUS_LABELS } from "@/components/analytics/theme";
 import {
-  useAnalyticsColors,
   type AnalyticsPalette,
+  useAnalyticsColors,
 } from "@/components/analytics/useAnalayticsColors";
 import {
-  RANGE_LABEL,
-  useAnalyticsData,
   type Delta,
   type Range,
+  RANGE_LABEL,
+  useAnalyticsData,
 } from "@/components/analytics/UseAnalyticsData";
-import { LineChart } from "@/components/analytics/LineChart";
-import { DonutChart } from "@/components/analytics/donutchart";
-import { BarChart, HBarList } from "@/components/analytics/barchart";
+
+import { useAuth } from "@/context/AuthContext";
+
+import { imgSrc } from "@/utils/getImgSrc";
 
 type Metric = "views" | "likes" | "posts";
 const METRICS: { key: Metric; label: string }[] = [
@@ -234,7 +237,7 @@ export default function AnalyticsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { C, s } = useA();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isInitializing } = useAuth();
   const d = useAnalyticsData();
 
   const [metric, setMetric] = useState<Metric>("views");
@@ -243,14 +246,14 @@ export default function AnalyticsScreen() {
   const [donutSel, setDonutSel] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) router.replace("/login");
-  }, [authLoading, isAuthenticated, router]);
+    if (!isInitializing && !isAuthenticated) router.replace("/login");
+  }, [isInitializing, isAuthenticated, router]);
 
   const labels = useMemo(() => d.current.map((x) => x.date), [d.current]);
   const pick = (b: { count: number; likes: number; views: number }) =>
     metric === "posts" ? b.count : b[metric];
-  const curData = useMemo(() => d.current.map(pick), [d.current, metric]); // eslint-disable-line
-  const prevData = useMemo(() => d.previous.map(pick), [d.previous, metric]); // eslint-disable-line
+  const curData = useMemo(() => d.current.map(pick), [d.current, metric]);  
+  const prevData = useMemo(() => d.previous.map(pick), [d.previous, metric]);  
   const viewsData = useMemo(() => d.current.map((x) => x.views), [d.current]);
 
   const delta = d.deltas[metric];
@@ -263,14 +266,14 @@ export default function AnalyticsScreen() {
 
   const donutData = useMemo(
     () =>
-      (Object.keys(d.statusCounts) as (keyof typeof STATUS_COLORS)[])
+      (Object.keys(d.statusCounts) as Status[])
         .filter((k) => (d.statusCounts[k] ?? 0) > 0)
         .map((k) => ({
           label: STATUS_LABELS[k],
           value: d.statusCounts[k]!,
-          color: STATUS_COLORS[k],
+          color: C.statusColors[k],
         })),
-    [d.statusCounts],
+    [C.statusColors, d.statusCounts],
   );
 
   const name = d.profile?.user?.name ?? "Your insights";
@@ -278,7 +281,7 @@ export default function AnalyticsScreen() {
   const maxViews = d.topPosts[0]?.views ?? 0;
   const firstLoad = d.isLoading && d.blogs.length === 0;
 
-  if (authLoading || !isAuthenticated) return <View style={s.screen} />;
+  if (isInitializing || !isAuthenticated) return <View style={s.screen} />;
 
   return (
     <View style={s.screen}>
@@ -548,7 +551,7 @@ export default function AnalyticsScreen() {
                           <View
                             style={[
                               s.statusDot,
-                              { backgroundColor: STATUS_COLORS[p.status] },
+                              { backgroundColor: C.statusColors[p.status as Status] },
                             ]}
                           />
                           <Text style={s.metaText}>

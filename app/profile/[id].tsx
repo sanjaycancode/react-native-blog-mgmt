@@ -15,7 +15,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import EmptyState from "@/components/profile/EmptyState";
-import GridFeed, { GridSkeleton } from "@/components/profile/GridFeed";
+import GridFeed, { GridSkeleton } from "@/components/home/GridFeed";
 import PublicProfileHeader, {
   BackButton,
   PublicProfileSkeleton,

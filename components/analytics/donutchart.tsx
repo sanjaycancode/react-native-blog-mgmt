@@ -1,8 +1,10 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+
 import Svg, { Circle, G } from "react-native-svg";
-import { C } from "./theme";
+
 import { useProgress } from "./chartutils";
+import { useAnalyticsColors } from "./useAnalayticsColors";
 
 export interface DonutDatum {
   label: string;
@@ -27,6 +29,7 @@ export function DonutChart({
   onSelect,
   centerCaption = "posts",
 }: Props) {
+  const C = useAnalyticsColors();
   const total = data.reduce((s, d) => s + d.value, 0);
   const p = useProgress(total + "-" + data.length, 1000);
   const r = (size - stroke - 6) / 2;
@@ -65,8 +68,8 @@ export function DonutChart({
           </G>
         </Svg>
         <View style={s.center} pointerEvents="none">
-          <Text style={s.centerValue}>{sel ? sel.value : total}</Text>
-          <Text style={s.centerCaption}>
+          <Text style={[s.centerValue, { color: C.text }]}>{sel ? sel.value : total}</Text>
+          <Text style={[s.centerCaption, { color: C.sub }]}>
             {sel ? sel.label.toLowerCase() : centerCaption}
           </Text>
         </View>
@@ -84,11 +87,11 @@ export function DonutChart({
             hitSlop={6}
           >
             <View style={[s.dot, { backgroundColor: d.color }]} />
-            <Text style={s.legendLabel} numberOfLines={1}>
+            <Text style={[s.legendLabel, { color: C.text }]} numberOfLines={1}>
               {d.label}
             </Text>
-            <Text style={s.legendValue}>{d.value}</Text>
-            <Text style={s.legendPct}>
+            <Text style={[s.legendValue, { color: C.text }]}>{d.value}</Text>
+            <Text style={[s.legendPct, { color: C.mute }]}>
               {Math.round((d.value / total) * 100)}%
             </Text>
           </Pressable>
@@ -106,22 +109,20 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   centerValue: {
-    color: C.text,
     fontSize: 30,
     fontWeight: "800",
     letterSpacing: -1,
   },
-  centerCaption: { color: C.sub, fontSize: 12, marginTop: 1 },
+  centerCaption: { fontSize: 12, marginTop: 1 },
   legend: { flex: 1, gap: 12 },
   legendRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  legendLabel: { flex: 1, color: C.text, fontSize: 13, fontWeight: "500" },
+  legendLabel: { flex: 1, fontSize: 13, fontWeight: "500" },
   legendValue: {
-    color: C.text,
     fontSize: 13,
     fontWeight: "700",
     minWidth: 18,
     textAlign: "right",
   },
-  legendPct: { color: C.mute, fontSize: 12, minWidth: 34, textAlign: "right" },
+  legendPct: { fontSize: 12, minWidth: 34, textAlign: "right" },
 });

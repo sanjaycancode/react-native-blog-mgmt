@@ -17,16 +17,44 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { Blog } from "@/types";
+
 import { useTheme } from "@/constants/theme";
+
+import { Blog } from "@/types";
 
 import { imgSrc } from "@/utils/getImgSrc";
 
-import EmptyState from "./EmptyState";
-import type { ProfileTab } from "./MinimalTabBar";
+import EmptyState from "../profile/EmptyState";
+import type { ProfileTab } from "../profile/MinimalTabBar";
 
 const GAP = 10;
 const SPRING = { damping: 18, stiffness: 260, mass: 0.7 };
+
+// height / width. A mix of short, square and tall cards.
+const RATIOS = [1, 1.3, 1.55, 1.15, 1.45, 1.25];
+const SKELETON_RATIOS = [1.3, 1, 1.55, 1.15, 1.45, 1.25];
+
+// Same id always gives the same ratio, so the layout is stable between renders.
+function ratioFor(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return RATIOS[h % RATIOS.length];
+}
+
+type Placed = { blog: Blog; index: number; ratio: number };
+
+// Put each card into whichever column is currently shorter.
+function splitColumns(items: Blog[]): [Placed[], Placed[]] {
+  const cols: [Placed[], Placed[]] = [[], []];
+  const heights = [0, 0];
+  items.forEach((blog, index) => {
+    const ratio = ratioFor(blog._id);
+    const c = heights[0] <= heights[1] ? 0 : 1;
+    cols[c].push({ blog, index, ratio });
+    heights[c] += ratio;
+  });
+  return cols;
+}
 
 // Only populated objects are shown; a bare id string would just be noise.
 function categoryTitle(blog: Blog): string | undefined {
@@ -58,6 +86,7 @@ export function GridCard({
   busy = false,
   showAuthor = false,
   width,
+  ratio = 4 / 3,
   onPress,
   onLongPress,
 }: {
@@ -67,6 +96,7 @@ export function GridCard({
   busy?: boolean;
   showAuthor?: boolean;
   width?: DimensionValue;
+  ratio?: number;
   onPress: () => void;
   onLongPress?: () => void;
 }) {
@@ -95,6 +125,7 @@ export function GridCard({
           style={[
             styles.card,
             {
+              aspectRatio: 1 / ratio, // taller ratio = taller card
               backgroundColor: colors.secondary,
               borderColor: colors.border,
               opacity: busy ? 0.5 : 1,
@@ -131,7 +162,7 @@ export function GridCard({
               </Text>
             )}
             <Text
-              numberOfLines={2}
+              numberOfLines={ratio >= 1.4 ? 3 : 2}
               style={{
                 color: "#fff",
                 fontSize: typography.sizes.sm,
@@ -169,13 +200,17 @@ export default function GridFeed({
     return <EmptyState type={type} onAction={onEmptyAction} />;
   }
 
-  return (
-    <View style={styles.grid}>
-      {items.map((blog, index) => (
+  const [left, right] = splitColumns(items);
+
+  const renderColumn = (col: Placed[]) => (
+    <View style={styles.column}>
+      {col.map(({ blog, index, ratio }) => (
         <GridCard
           key={blog._id}
           blog={blog}
           index={index}
+          ratio={ratio}
+          width="100%"
           type={type}
           busy={busyId === blog._id}
           showAuthor={showAuthor}
@@ -185,6 +220,13 @@ export default function GridFeed({
           }
         />
       ))}
+    </View>
+  );
+
+  return (
+    <View style={styles.grid}>
+      {renderColumn(left)}
+      {renderColumn(right)}
     </View>
   );
 }
@@ -200,17 +242,31 @@ export function GridSkeleton({ count = 4 }: { count?: number }) {
 
   const style = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
+  // Alternate placeholders between two columns, same shape as the real feed.
+  const cols: number[][] = [[], []];
+  Array.from({ length: count }).forEach((_, i) =>
+    cols[i % 2].push(SKELETON_RATIOS[i % SKELETON_RATIOS.length]),
+  );
+
   return (
     <View style={styles.grid}>
-      {Array.from({ length: count }).map((_, i) => (
-        <Animated.View key={i} style={[styles.cardWrap, style]}>
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: colors.secondary, borderColor: colors.border },
-            ]}
-          />
-        </Animated.View>
+      {cols.map((col, c) => (
+        <View key={c} style={styles.column}>
+          {col.map((ratio, i) => (
+            <Animated.View key={i} style={[{ width: "100%" }, style]}>
+              <View
+                style={[
+                  styles.card,
+                  {
+                    aspectRatio: 1 / ratio,
+                    backgroundColor: colors.secondary,
+                    borderColor: colors.border,
+                  },
+                ]}
+              />
+            </Animated.View>
+          ))}
+        </View>
       ))}
     </View>
   );
@@ -219,16 +275,18 @@ export function GridSkeleton({ count = 4 }: { count?: number }) {
 const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: GAP,
+    alignItems: "flex-start", // columns keep their own height
+    gap: GAP,
     padding: GAP,
   },
+  column: {
+    flex: 1,
+    rowGap: GAP,
+  },
   cardWrap: {
-    width: "48.8%",
+    width: "100%",
   },
   card: {
-    aspectRatio: 3 / 4,
     borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
