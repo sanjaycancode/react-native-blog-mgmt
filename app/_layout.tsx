@@ -3,7 +3,7 @@ import "react-native-reanimated";
 import { type ReactNode, useEffect } from "react";
 import { View } from "react-native";
 
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 
@@ -22,6 +22,7 @@ import { ReactQueryProvider } from "@/lib/react-query/ReactQueryProvider";
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
+  usePathname,
 } from "expo-router";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -78,6 +79,7 @@ function PaperThemeProvider({ children }: { children: ReactNode }) {
 function RootNavigator() {
   const { isDark } = useTheme();
   const { isInitializing } = useAuth();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isInitializing) {
@@ -85,12 +87,17 @@ function RootNavigator() {
     }
   }, [isInitializing]);
 
+  const hideNavbar =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname.startsWith("/blog/");
+
   return (
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <View style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false }} />
-        <Navbar />
+        {!hideNavbar && <Navbar />}
       </View>
     </>
   );

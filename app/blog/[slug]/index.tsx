@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   Linking,
   Modal,
   Pressable,
   RefreshControl,
-  ScrollView,
   Share,
   StyleSheet,
+  Text,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -16,11 +16,25 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 import RenderHTML from "@native-html/render";
+import Animated, {
+  Extrapolation,
+  interpolate,
+  type SharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import SaveBlogButton from "@/components/SaveBlogButton";
 import { ThemedButton } from "@/components/ThemedButton";
-import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
-import { ThemedText } from "@/components/ThemedText";
 
 import { blogApi } from "@/api/services";
 
@@ -34,6 +48,11 @@ import type { Blog } from "@/types/blog";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import { env } from "@/lib/config/env";
+
+const PAD = 16;
+const SPRING = { damping: 18, stiffness: 260, mass: 0.7 };
+
+// ---- Helpers ---------------------------------------------------------------
 
 function getParam(value?: string | string[]) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -59,25 +78,10 @@ function formatDate(value?: string) {
   return Number.isNaN(date.getTime())
     ? null
     : date.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "long",
+        month: "short",
         day: "numeric",
+        year: "numeric",
       });
-}
-
-function formatRelative(value?: string) {
-  if (!value) return null;
-  const timestamp = new Date(value).getTime();
-  if (Number.isNaN(timestamp)) return null;
-
-  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return formatDate(value);
 }
 
 function getPlainText(html: string) {
@@ -98,48 +102,307 @@ function getReadingTime(html: string) {
   return `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
 }
 
-function DetailSkeleton() {
-  const { colors, radii, spacing } = useTheme();
+function compact(n: number) {
+  return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n);
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  unpublished: "Unpublished",
+  submitted: "In review",
+  rejected: "Rejected",
+};
+
+// ---- Top bar: back, title that appears on scroll, reading progress ---------
+
+function TopIconButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.topButton,
+        { backgroundColor: colors.secondary, opacity: pressed ? 0.6 : 1 },
+      ]}
+    >
+      <Ionicons name={icon} size={19} color={colors.foreground} />
+    </Pressable>
+  );
+}
+
+function TopBar({
+  title,
+  onBack,
+  right,
+  scrollY,
+  titleEnd,
+  contentH,
+  viewH,
+}: {
+  title: string;
+  onBack: () => void;
+  right?: React.ReactNode;
+  scrollY: SharedValue<number>;
+  titleEnd: SharedValue<number>;
+  contentH: SharedValue<number>;
+  viewH: SharedValue<number>;
+}) {
+  const { colors, typography } = useTheme();
+
+  // The title fades in once the big headline has scrolled out of view.
+  const titleStyle = useAnimatedStyle(() => {
+    const end = titleEnd.value;
+    if (end <= 0) return { opacity: 0 };
+    const range = [end - 56, end - 12];
+    return {
+      opacity: interpolate(scrollY.value, range, [0, 1], Extrapolation.CLAMP),
+      transform: [
+        {
+          translateY: interpolate(
+            scrollY.value,
+            range,
+            [8, 0],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+    };
+  });
+
+  const lineStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, 12], [0, 1], Extrapolation.CLAMP),
+  }));
+
+  const progressStyle = useAnimatedStyle(() => {
+    const max = contentH.value - viewH.value;
+    const p = max > 0 ? Math.min(Math.max(scrollY.value / max, 0), 1) : 0;
+    return { width: `${p * 100}%` };
+  });
 
   return (
-    <View style={{ padding: spacing.md, gap: spacing.md }}>
-      {[24, 40, 18, 220, 120, 18, 18, 18, 18].map((height, index) => (
+    <View style={{ backgroundColor: colors.background }}>
+      <View style={styles.topRow}>
+        <View style={styles.topSide}>
+          <TopIconButton icon="chevron-back" label="Go back" onPress={onBack} />
+        </View>
+        <Animated.Text
+          numberOfLines={1}
+          style={[
+            styles.topTitle,
+            {
+              color: colors.foreground,
+              fontSize: typography.sizes.base,
+              fontWeight: typography.weights.bold,
+            },
+            titleStyle,
+          ]}
+        >
+          {title}
+        </Animated.Text>
+        <View style={[styles.topSide, { justifyContent: "flex-end" }]}>
+          {right}
+        </View>
+      </View>
+      <Animated.View
+        style={[styles.hairline, { backgroundColor: colors.border }, lineStyle]}
+      />
+      <Animated.View
+        style={[
+          styles.progress,
+          { backgroundColor: colors.primary },
+          progressStyle,
+        ]}
+      />
+    </View>
+  );
+}
+
+// ---- Like button with optimistic pop ---------------------------------------
+
+function LikeButton({
+  liked,
+  count,
+  busy,
+  onPress,
+}: {
+  liked: boolean;
+  count: number;
+  busy: boolean;
+  onPress: () => void;
+}) {
+  const { colors, typography } = useTheme();
+  const scale = useSharedValue(1);
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Pressable
+      onPress={() => {
+        if (!liked) {
+          scale.value = withSequence(
+            withSpring(1.35, { damping: 6, stiffness: 320 }),
+            withSpring(1, { damping: 10, stiffness: 240 }),
+          );
+        }
+        onPress();
+      }}
+      disabled={busy}
+      accessibilityRole="button"
+      accessibilityLabel={liked ? "Unlike" : "Like"}
+      accessibilityState={{ selected: liked }}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.likeButton,
+        {
+          backgroundColor: liked ? colors.secondary : "transparent",
+          opacity: pressed ? 0.7 : 1,
+        },
+      ]}
+    >
+      <Animated.View style={iconStyle}>
+        <Ionicons
+          name={liked ? "heart" : "heart-outline"}
+          size={24}
+          color={liked ? colors.primary : colors.foreground}
+        />
+      </Animated.View>
+      <Text
+        style={{
+          color: liked ? colors.primary : colors.foreground,
+          fontSize: typography.sizes.sm,
+          fontWeight: typography.weights.bold,
+        }}
+      >
+        {compact(count)}
+      </Text>
+    </Pressable>
+  );
+}
+
+// ---- Loading skeleton ------------------------------------------------------
+
+function DetailSkeleton() {
+  const { colors, spacing } = useTheme();
+  const pulse = useSharedValue(0.45);
+
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(1, { duration: 800 }), -1, true);
+  }, [pulse]);
+
+  const style = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  const block = { backgroundColor: colors.secondary };
+
+  return (
+    <Animated.View
+      style={[{ paddingHorizontal: PAD, paddingTop: spacing.md }, style]}
+    >
+      <View style={[styles.skelLine, block, { width: "32%" }]} />
+      <View
+        style={[
+          styles.skelLine,
+          block,
+          { width: "95%", height: 26, marginTop: 14 },
+        ]}
+      />
+      <View
+        style={[
+          styles.skelLine,
+          block,
+          { width: "70%", height: 26, marginTop: 8 },
+        ]}
+      />
+      <View style={styles.skelAuthor}>
+        <View style={[styles.skelAvatar, block]} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <View style={[styles.skelLine, block, { width: "40%" }]} />
+          <View style={[styles.skelLine, block, { width: "28%" }]} />
+        </View>
+      </View>
+      <View style={[styles.skelImage, block]} />
+      {[100, 96, 100, 88, 60].map((w, i) => (
         <View
-          key={index}
-          style={{
-            width: index === 1 || index === 3 ? "100%" : `${65 + (index % 3) * 10}%`,
-            height,
-            backgroundColor: colors.muted,
-            borderRadius: radii.md,
-          }}
+          key={i}
+          style={[styles.skelLine, block, { width: `${w}%`, marginTop: 12 }]}
         />
       ))}
-    </View>
+    </Animated.View>
   );
 }
 
-function MetaRow({ label, value }: { label: string; value: string }) {
-  const { colors, spacing } = useTheme();
+// ---- Author avatar ---------------------------------------------------------
+
+function AuthorAvatar({
+  uri,
+  failed,
+  onError,
+  name,
+  size,
+}: {
+  uri?: string;
+  failed: boolean;
+  onError: () => void;
+  name?: string;
+  size: number;
+}) {
+  const { colors, typography } = useTheme();
+
+  if (uri && !failed) {
+    return (
+      <Image
+        source={{ uri }}
+        accessibilityLabel={`${name ?? "Author"} avatar`}
+        onError={onError}
+        style={{ width: size, height: size, borderRadius: size / 2 }}
+      />
+    );
+  }
 
   return (
-    <View style={[styles.metaRow, { paddingVertical: spacing.xs }]}>
-      <ThemedText variant="bodySmall" semantic="muted">
-        {label}
-      </ThemedText>
-      <ThemedText
-        variant="bodySmall"
-        style={{ color: colors.foreground, fontWeight: "600", flexShrink: 1 }}
+    <View
+      style={[
+        styles.avatarFallback,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: colors.primary,
+        },
+      ]}
+    >
+      <Text
+        style={{
+          color: colors.primaryForeground,
+          fontSize: Math.max(typography.sizes.xs, size * 0.42),
+          fontWeight: typography.weights.bold,
+        }}
       >
-        {value}
-      </ThemedText>
+        {name?.trim().charAt(0).toUpperCase() || "?"}
+      </Text>
     </View>
   );
 }
 
+// ---- Screen ----------------------------------------------------------------
+
 export default function BlogDetailPage() {
-  const { slug: slugParam } = useLocalSearchParams<{ slug?: string | string[] }>();
+  const { slug: slugParam } = useLocalSearchParams<{
+    slug?: string | string[];
+  }>();
   const slug = getParam(slugParam);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { colors, spacing, radii, typography } = useTheme();
   const { session } = useAuth();
@@ -158,26 +421,55 @@ export default function BlogDetailPage() {
   const [imageFailed, setImageFailed] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
 
+  // Scroll-driven values for the top bar.
+  const scrollY = useSharedValue(0);
+  const contentH = useSharedValue(0);
+  const viewH = useSharedValue(0);
+  const titleEnd = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+    contentH.value = e.contentSize.height;
+    viewH.value = e.layoutMeasurement.height;
+  });
+
+  // Remembers which story is on screen so pull-to-refresh updates it in place
+  // instead of swapping the whole page for a skeleton.
+  const loadedSlug = useRef<string | null>(null);
+
+  const goBack = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/blog");
+  }, [router]);
+
   useEffect(() => {
     if (!slug) return;
 
     let cancelled = false;
-    setLoading(true);
+    if (loadedSlug.current !== slug) {
+      setLoading(true);
+      setBlog(null);
+      setImageFailed(false);
+      setAvatarFailed(false);
+      scrollY.value = 0;
+      titleEnd.value = 0;
+    }
     setError(null);
-    setBlog(null);
-    setImageFailed(false);
-    setAvatarFailed(false);
 
     blogApi
       .getBySlug(slug)
       .then((response) => {
         if (cancelled) return;
         const result = response.data.result;
+        loadedSlug.current = slug;
         setBlog(result);
         setLikesCount(result.likes?.length ?? 0);
       })
       .catch((requestError: unknown) => {
-        if (!cancelled) setError(getErrorMessage(requestError));
+        if (cancelled) return;
+        const message = getErrorMessage(requestError);
+        // A failed refresh shouldn't wipe a story that's already on screen.
+        if (loadedSlug.current === slug) showToast(message, "error");
+        else setError(message);
       })
       .finally(() => {
         if (!cancelled) {
@@ -189,38 +481,38 @@ export default function BlogDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [slug, reloadKey]);
+  }, [slug, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setLiked(
-      Boolean(
-        session?.user.id && blog?.likes?.includes(session.user.id),
-      ),
+      Boolean(session?.user?.id && blog?.likes?.includes(session.user.id)),
     );
-  }, [blog, session?.user.id]);
+  }, [blog, session?.user?.id]);
 
-  const contentWidth = Math.max(width - spacing.md * 2, 1);
+  const contentWidth = Math.max(width - PAD * 2, 1);
   const imageUri = useMemo(() => getAssetUri(blog?.image), [blog?.image]);
   const avatarUri = useMemo(
     () => getAssetUri(blog?.author?.profile?.avatar, "profiles"),
     [blog?.author?.profile?.avatar],
   );
   const isAuthor = Boolean(
-    session?.user.id && blog?.author?._id === session.user.id,
+    session?.user?.id && blog?.author?._id === session.user.id,
   );
   const htmlTagsStyles = useMemo(
     () => ({
       body: {
         color: colors.foreground,
         fontSize: typography.sizes.base,
-        lineHeight: Math.round(typography.sizes.base * typography.lineHeights.relaxed),
+        lineHeight: Math.round(
+          typography.sizes.base * typography.lineHeights.relaxed,
+        ),
       },
       p: { marginTop: 0, marginBottom: spacing.md },
       h1: {
         color: colors.foreground,
         fontSize: typography.sizes["2xl"],
         fontWeight: typography.weights.bold,
-        marginTop: spacing.xl,
+        marginTop: spacing.lg,
         marginBottom: spacing.sm,
       },
       h2: {
@@ -234,7 +526,7 @@ export default function BlogDetailPage() {
         color: colors.foreground,
         fontSize: typography.sizes.lg,
         fontWeight: typography.weights.semibold,
-        marginTop: spacing.lg,
+        marginTop: spacing.md,
         marginBottom: spacing.xs,
       },
       li: { marginBottom: spacing.xs },
@@ -267,19 +559,31 @@ export default function BlogDetailPage() {
     setReloadKey((key) => key + 1);
   }, []);
 
+  // Optimistic: the heart responds instantly and rolls back if the request fails.
   const handleLike = useCallback(async () => {
     if (!blog || isLiking) return;
+    if (!session) {
+      showToast("Log in to like this story.");
+      router.push("/login");
+      return;
+    }
+    const prevLiked = liked;
+    const prevCount = likesCount;
+    setLiked(!prevLiked);
+    setLikesCount(Math.max(0, prevCount + (prevLiked ? -1 : 1)));
     setIsLiking(true);
     try {
       const result = (await blogApi.toggleLike(blog._id)).data.result;
       setLiked(result.liked);
       setLikesCount(result.likesCount);
     } catch (requestError) {
+      setLiked(prevLiked);
+      setLikesCount(prevCount);
       showToast(getErrorMessage(requestError), "error");
     } finally {
       setIsLiking(false);
     }
-  }, [blog, isLiking, showToast]);
+  }, [blog, isLiking, liked, likesCount, router, session, showToast]);
 
   const handleShare = useCallback(async () => {
     if (!blog) return;
@@ -298,15 +602,15 @@ export default function BlogDetailPage() {
     try {
       await blogApi.delete(blog._id);
       setDeleteModalOpen(false);
-      showToast("Blog deleted.");
-      router.replace("/blog");
+      showToast("Story deleted.");
+      goBack();
     } catch (deleteError) {
       setDeleteModalOpen(false);
       showToast(getErrorMessage(deleteError), "error");
     } finally {
       setDeleteLoading(false);
     }
-  }, [blog, deleteLoading, router, showToast]);
+  }, [blog, deleteLoading, goBack, showToast]);
 
   const handleHtmlLinkPress = useCallback(
     (_event: unknown, href: string) => {
@@ -317,154 +621,39 @@ export default function BlogDetailPage() {
     [showToast],
   );
 
-  if (loading) {
-    return (
-      <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <DetailSkeleton />
-      </ThemedSafeAreaView>
-    );
-  }
+  const openAuthor = () => {
+    const id = blog?.author?._id;
+    if (id) router.push(`/profile/${id}`);
+  };
 
-  if (!blog) {
-    return (
-      <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <View style={[styles.state, { padding: spacing.xl }]}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={44}
-            color={colors.mutedForeground}
-          />
-          <ThemedText variant="heading5" style={styles.centerText}>
-            {error ?? "Blog not found."}
-          </ThemedText>
-          <ThemedText
-            variant="bodySmall"
-            semantic="muted"
-            style={styles.centerText}
-          >
-            This story may have been removed, or there may be a connection
-            problem.
-          </ThemedText>
-          {error ? (
-            <ThemedButton
-              title="Try again"
-              onPress={() => setReloadKey((key) => key + 1)}
-            />
-          ) : null}
-          <ThemedButton
-            title="Back to blogs"
-            variant="outlined"
-            onPress={() => router.replace("/blog")}
-          />
-        </View>
-      </ThemedSafeAreaView>
-    );
-  }
+  const date = formatDate(blog?.createdAt);
+  const views = typeof blog?.views === "number" ? blog.views : undefined;
+  const subline = [date, views !== undefined ? `${compact(views)} views` : null]
+    .filter(Boolean)
+    .join(" · ");
+  const statusLabel =
+    isAuthor && blog && blog.status !== "published"
+      ? (STATUS_LABEL[blog.status] ?? blog.status)
+      : null;
 
   return (
-    <ThemedSafeAreaView edges={["top", "left", "right"]}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: spacing["4xl"] }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
-      >
-        <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg }}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.replace("/blog")}
-            style={[styles.backLink, { marginBottom: spacing.lg }]}
-          >
-            <Ionicons name="arrow-back" size={18} color={colors.primary} />
-            <ThemedText variant="bodySmall" semantic="primary">
-              Back to blogs
-            </ThemedText>
-          </Pressable>
-
-          {blog.category?.title ? (
-            <View
-              style={[
-                styles.categoryBadge,
-                {
-                  backgroundColor: colors.badgePrimaryBg,
-                  borderRadius: radii.full,
-                  marginBottom: spacing.sm,
-                  paddingHorizontal: spacing.sm,
-                  paddingVertical: spacing.xs,
-                },
-              ]}
-            >
-              <ThemedText
-                variant="caption"
-                style={{ color: colors.badgePrimaryText }}
-              >
-                {blog.category.title}
-              </ThemedText>
-            </View>
-          ) : null}
-
-          <ThemedText variant="heading2" style={styles.title}>
-            {blog.title}
-          </ThemedText>
-
-          <View style={[styles.metadata, { marginTop: spacing.md }]}>
-            <View style={styles.authorInline}>
-              <AuthorAvatar
-                uri={avatarUri}
-                failed={avatarFailed}
-                onError={() => setAvatarFailed(true)}
-                name={blog.author?.name}
-                size={28}
-              />
-              <ThemedText variant="bodySmall" style={styles.authorName}>
-                {blog.author?.name ?? "Unknown author"}
-              </ThemedText>
-            </View>
-            {formatDate(blog.createdAt) ? (
-              <ThemedText variant="caption" semantic="muted">
-                {formatDate(blog.createdAt)}
-              </ThemedText>
-            ) : null}
-            <ThemedText variant="caption" semantic="muted">
-              {getReadingTime(blog.description)}
-            </ThemedText>
-          </View>
-
-          {blog.tags?.length ? (
-            <View style={[styles.tags, { gap: spacing.xs, marginTop: spacing.md }]}>
-              {blog.tags.map((tag) => (
-                <View
-                  key={tag}
-                  style={[
-                    styles.tag,
-                    {
-                      backgroundColor: colors.muted,
-                      borderColor: colors.border,
-                      borderRadius: radii.full,
-                      paddingHorizontal: spacing.sm,
-                      paddingVertical: spacing.xs,
-                    },
-                  ]}
-                >
-                  <ThemedText variant="caption" semantic="muted">
-                    {tag}
-                  </ThemedText>
-                </View>
-              ))}
-            </View>
-          ) : null}
-
-          {isAuthor ? (
-            <View style={[styles.ownerActions, { gap: spacing.sm, marginTop: spacing.md }]}>
-              <ThemedButton
-                title="Edit"
-                variant="outlined"
-                startIcon={<Ionicons name="create-outline" />}
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
+      <TopBar
+        title={blog?.title ?? ""}
+        onBack={goBack}
+        scrollY={scrollY}
+        titleEnd={titleEnd}
+        contentH={contentH}
+        viewH={viewH}
+        right={
+          isAuthor && blog ? (
+            <View style={styles.topActions}>
+              <TopIconButton
+                icon="create-outline"
+                label="Edit story"
                 onPress={() =>
                   router.push({
                     pathname: "/blog/[slug]/edit",
@@ -472,219 +661,279 @@ export default function BlogDetailPage() {
                   })
                 }
               />
-              <ThemedButton
-                title="Delete"
-                variant="outlined"
-                color="danger"
-                startIcon={<Ionicons name="trash-outline" />}
+              <TopIconButton
+                icon="trash-outline"
+                label="Delete story"
                 onPress={() => setDeleteModalOpen(true)}
               />
             </View>
-          ) : null}
+          ) : null
+        }
+      />
 
-          {imageUri && !imageFailed ? (
-            <Image
-              source={{ uri: imageUri }}
-              accessibilityLabel={`${blog.title} cover image`}
-              resizeMode="cover"
-              onError={() => setImageFailed(true)}
-              style={[
-                styles.heroImage,
-                {
-                  backgroundColor: colors.muted,
-                  borderRadius: radii.lg,
-                  marginTop: spacing.lg,
-                },
-              ]}
-            />
-          ) : (
-            <View
-              style={[
-                styles.imagePlaceholder,
-                {
-                  backgroundColor: colors.muted,
-                  borderRadius: radii.lg,
-                  marginTop: spacing.lg,
-                  minHeight: 180,
-                },
-              ]}
-            >
-              <Ionicons
-                name="image-outline"
-                size={36}
-                color={colors.mutedForeground}
-              />
-              <ThemedText variant="caption" semantic="muted">
-                No cover image
-              </ThemedText>
-            </View>
-          )}
-
-          <View
-            style={[
-              styles.authorCard,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                borderRadius: radii.md,
-                marginTop: spacing.lg,
-                padding: spacing.md,
-              },
-            ]}
+      {loading ? (
+        <DetailSkeleton />
+      ) : !blog ? (
+        <View style={[styles.state, { padding: spacing.xl }]}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={40}
+            color={colors.mutedForeground}
+          />
+          <Text
+            style={{
+              color: colors.foreground,
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.bold,
+              textAlign: "center",
+            }}
           >
-            <ThemedText variant="caption" semantic="muted">
-              Written by
-            </ThemedText>
-            <View style={[styles.authorCardRow, { gap: spacing.sm, marginTop: spacing.sm }]}>
-              <AuthorAvatar
-                uri={avatarUri}
-                failed={avatarFailed}
-                onError={() => setAvatarFailed(true)}
-                name={blog.author?.name}
-                size={44}
-              />
-              <View style={styles.authorCardDetails}>
-                <ThemedText variant="bodySmall" style={{ fontWeight: "600" }}>
-                  {blog.author?.name ?? "Unknown author"}
-                </ThemedText>
-                {blog.author?.email ? (
-                  <ThemedText variant="caption" semantic="muted">
-                    {blog.author.email}
-                  </ThemedText>
-                ) : null}
-              </View>
-            </View>
-          </View>
-
-          <View
-            style={[
-              styles.metaCard,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                borderRadius: radii.md,
-                marginTop: spacing.md,
-                padding: spacing.md,
-              },
-            ]}
-          >
-            <ThemedText variant="heading6" style={{ marginBottom: spacing.sm }}>
-              Story details
-            </ThemedText>
-            {blog.category?.title ? (
-              <MetaRow label="Category" value={blog.category.title} />
-            ) : null}
-            <MetaRow label="Status" value={blog.status} />
-            {formatDate(blog.createdAt) ? (
-              <MetaRow label="Published" value={formatDate(blog.createdAt)!} />
-            ) : null}
-            {formatRelative(blog.updatedAt) ? (
-              <MetaRow label="Updated" value={formatRelative(blog.updatedAt)!} />
-            ) : null}
-            <MetaRow label="Reading time" value={getReadingTime(blog.description)} />
-            {typeof blog.views === "number" ? (
-              <MetaRow label="Views" value={String(blog.views)} />
-            ) : null}
-          </View>
-
-          <View style={[styles.articleBody, { marginTop: spacing.xl }]}>
-            <RenderHTML
-              contentWidth={contentWidth}
-              source={{ html: blog.description ?? "" }}
-              tagsStyles={htmlTagsStyles}
-              renderersProps={{
-                a: { onPress: handleHtmlLinkPress },
-              }}
-            />
-          </View>
-
-          <View
-            style={[
-              styles.updatedFooter,
-              {
-                borderTopColor: colors.border,
-                marginTop: spacing.xl,
-                paddingTop: spacing.md,
-              },
-            ]}
-          >
-            <ThemedText variant="caption" semantic="muted">
-              Last updated: {formatDate(blog.updatedAt) ?? "Unknown"}
-            </ThemedText>
-            <ThemedButton
-              title="More blogs"
-              variant="outlined"
-              size="small"
-              onPress={() => router.replace("/blog")}
-            />
-          </View>
-
-          <View
-            style={[
-              styles.engagement,
-              {
-                borderTopColor: colors.border,
-                marginTop: spacing.xl,
-                paddingTop: spacing.lg,
-              },
-            ]}
-          >
-            <ThemedText variant="heading4">Join the conversation</ThemedText>
-            <View style={[styles.engagementActions, { gap: spacing.sm, marginTop: spacing.md }]}>
+            {error ?? "Story not found"}
+          </Text>
+          <View style={{ gap: spacing.sm, alignSelf: "stretch" }}>
+            {error ? (
               <ThemedButton
-                title={`${liked ? "Liked" : "Like"} · ${likesCount}`}
-                variant={liked ? "filled" : "outlined"}
-                loading={isLiking}
-                startIcon={
-                  <Ionicons name={liked ? "heart" : "heart-outline"} />
-                }
-                onPress={() => void handleLike()}
-                style={styles.engagementButton}
+                title="Try again"
+                onPress={() => setReloadKey((key) => key + 1)}
               />
-                <ThemedButton
-                title="Share story"
-                variant="outlined"
-                startIcon={<Ionicons name="share-social-outline" />}
-                onPress={() => void handleShare()}
-                style={styles.engagementButton}
-              />
-              {blog.status === "published" ? (
-                <View
-                  style={[
-                    styles.saveButtonWrap,
-                    {
-                      borderColor: colors.border,
-                      borderRadius: radii.md,
-                    },
-                  ]}
-                >
-                  <SaveBlogButton blogId={blog._id} />
-                </View>
-              ) : null}
-
-            </View>
-            <View
-              style={[
-                styles.commentsNotice,
-                {
-                  backgroundColor: colors.muted,
-                  borderRadius: radii.md,
-                  marginTop: spacing.lg,
-                  padding: spacing.md,
-                },
-              ]}
-            >
-              <ThemedText variant="heading5" style={{ marginBottom: spacing.xs }}>
-                Comments
-              </ThemedText>
-              <ThemedText variant="bodySmall" semantic="muted">
-                Comments are not connected in the mobile app yet.
-              </ThemedText>
-            </View>
+            ) : null}
+            <ThemedButton title="Go back" variant="outlined" onPress={goBack} />
           </View>
         </View>
-      </ScrollView>
+      ) : (
+        <>
+          <Animated.ScrollView
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: spacing.xl }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={colors.primary}
+                colors={[colors.primary]}
+              />
+            }
+          >
+            <View style={{ paddingHorizontal: PAD, paddingTop: spacing.md }}>
+              {/* Kicker: category, reading time, status (author only) */}
+              <View style={styles.kicker}>
+                {!!blog.category?.title && (
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: colors.primary,
+                      fontSize: typography.sizes.sm,
+                      fontWeight: typography.weights.bold,
+                      flexShrink: 1,
+                    }}
+                  >
+                    {blog.category.title}
+                  </Text>
+                )}
+                {!!blog.category?.title && (
+                  <Text
+                    style={{
+                      color: colors.mutedForeground,
+                      fontSize: typography.sizes.sm,
+                    }}
+                  >
+                    ·
+                  </Text>
+                )}
+                <Text
+                  style={{
+                    color: colors.mutedForeground,
+                    fontSize: typography.sizes.sm,
+                  }}
+                >
+                  {getReadingTime(blog.description ?? "")}
+                </Text>
+                {!!statusLabel && (
+                  <View
+                    style={[
+                      styles.statusPill,
+                      { backgroundColor: colors.secondary },
+                    ]}
+                  >
+                    <Ionicons
+                      name="lock-closed"
+                      size={10}
+                      color={colors.primary}
+                    />
+                    <Text
+                      style={{
+                        color: colors.primary,
+                        fontSize: 11,
+                        fontWeight: typography.weights.bold,
+                      }}
+                    >
+                      {statusLabel}
+                    </Text>
+                  </View>
+                )}
+              </View>
 
+              {/* Headline. Its bottom edge tells the top bar when to show the title. */}
+              <View
+                onLayout={(e) => {
+                  titleEnd.value =
+                    e.nativeEvent.layout.y + e.nativeEvent.layout.height;
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontSize: typography.sizes["2xl"],
+                    fontWeight: typography.weights.heavy,
+                    lineHeight: Math.round(typography.sizes["2xl"]),
+                    letterSpacing: -0.5,
+                    marginTop: 6,
+                  }}
+                >
+                  {blog.title}
+                </Text>
+              </View>
+
+              {/* Author */}
+              <Pressable
+                onPress={openAuthor}
+                disabled={!blog.author?._id}
+                accessibilityRole="link"
+                accessibilityLabel={`Open ${blog.author?.name ?? "author"}'s profile`}
+                style={({ pressed }) => [
+                  styles.authorRow,
+                  { opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <AuthorAvatar
+                  uri={avatarUri}
+                  failed={avatarFailed}
+                  onError={() => setAvatarFailed(true)}
+                  name={blog.author?.name}
+                  size={36}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: colors.foreground,
+                      fontSize: typography.sizes.sm,
+                      fontWeight: typography.weights.bold,
+                    }}
+                  >
+                    {blog.author?.name ?? "Unknown author"}
+                  </Text>
+                  {!!subline && (
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        color: colors.mutedForeground,
+                        fontSize: typography.sizes.xs,
+                        marginTop: 1,
+                      }}
+                    >
+                      {subline}
+                    </Text>
+                  )}
+                </View>
+                {!!blog.author?._id && (
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={colors.mutedForeground}
+                  />
+                )}
+              </Pressable>
+
+              {/* Cover: only when there is one */}
+              {imageUri && !imageFailed ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  accessibilityLabel={`${blog.title} cover image`}
+                  resizeMode="cover"
+                  onError={() => setImageFailed(true)}
+                  style={[
+                    styles.cover,
+                    {
+                      backgroundColor: colors.secondary,
+                      borderRadius: radii.lg,
+                    },
+                  ]}
+                />
+              ) : null}
+
+              {/* Article */}
+              <View style={{ marginTop: spacing.lg }}>
+                <RenderHTML
+                  contentWidth={contentWidth}
+                  source={{ html: blog.description ?? "" }}
+                  tagsStyles={htmlTagsStyles}
+                  renderersProps={{
+                    a: { onPress: handleHtmlLinkPress },
+                  }}
+                />
+              </View>
+
+              {/* Tags */}
+              {blog.tags?.length ? (
+                <View style={[styles.tags, { marginTop: spacing.sm }]}>
+                  {blog.tags.map((tag) => (
+                    <View
+                      key={tag}
+                      style={[
+                        styles.tag,
+                        { backgroundColor: colors.secondary },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          color: colors.secondaryForeground,
+                          fontSize: typography.sizes.xs,
+                          fontWeight: typography.weights.medium,
+                        }}
+                      >
+                        {tag}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          </Animated.ScrollView>
+
+          {/* Action bar */}
+          <View
+            style={[
+              styles.actionBar,
+              {
+                backgroundColor: colors.background,
+                borderTopColor: colors.border,
+                paddingBottom: Math.max(insets.bottom, 8),
+              },
+            ]}
+          >
+            <LikeButton
+              liked={liked}
+              count={likesCount}
+              busy={isLiking}
+              onPress={() => void handleLike()}
+            />
+            <View style={{ flex: 1 }} />
+            {blog.status === "published" ? (
+              <SaveBlogButton blogId={blog._id} />
+            ) : null}
+            <TopIconButton
+              icon="share-outline"
+              label="Share story"
+              onPress={() => void handleShare()}
+            />
+          </View>
+        </>
+      )}
+
+      {/* Delete confirmation */}
       <Modal
         animationType="fade"
         transparent
@@ -694,16 +943,16 @@ export default function BlogDetailPage() {
         <View style={styles.modalRoot}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Close delete confirmation"
+            accessibilityLabel="Close"
             onPress={() => setDeleteModalOpen(false)}
             style={[
               StyleSheet.absoluteFill,
-              { backgroundColor: colors.foreground, opacity: 0.35 },
+              { backgroundColor: "#000", opacity: 0.45 },
             ]}
           />
           <View
             style={[
-              styles.deleteDialog,
+              styles.dialog,
               {
                 backgroundColor: colors.card,
                 borderColor: colors.border,
@@ -713,211 +962,197 @@ export default function BlogDetailPage() {
               },
             ]}
           >
-            <ThemedText variant="heading5">Delete blog?</ThemedText>
-            <ThemedText
-              variant="bodySmall"
-              semantic="muted"
-              style={{ marginTop: spacing.sm }}
+            <Text
+              style={{
+                color: colors.foreground,
+                fontSize: typography.sizes.lg,
+                fontWeight: typography.weights.bold,
+              }}
             >
-              Are you sure you want to delete “{blog.title}”? This action
-              cannot be undone.
-            </ThemedText>
-            <View style={[styles.dialogActions, { gap: spacing.sm, marginTop: spacing.lg }]}>
+              Delete this story?
+            </Text>
+            <Text
+              numberOfLines={2}
+              style={{
+                color: colors.mutedForeground,
+                fontSize: typography.sizes.sm,
+                lineHeight: 20,
+                marginTop: spacing.xs,
+              }}
+            >
+              “{blog?.title}” will be removed for good. This can't be undone.
+            </Text>
+            <View
+              style={[
+                styles.dialogActions,
+                { gap: spacing.sm, marginTop: spacing.lg },
+              ]}
+            >
               <ThemedButton
                 title="Cancel"
                 variant="outlined"
                 disabled={deleteLoading}
                 onPress={() => setDeleteModalOpen(false)}
-                style={styles.dialogButton}
+                style={{ flex: 1 }}
               />
               <ThemedButton
                 title="Delete"
                 color="danger"
                 loading={deleteLoading}
                 onPress={() => void handleDelete()}
-                style={styles.dialogButton}
+                style={{ flex: 1 }}
               />
             </View>
           </View>
         </View>
       </Modal>
-    </ThemedSafeAreaView>
-  );
-}
-
-function AuthorAvatar({
-  uri,
-  failed,
-  onError,
-  name,
-  size,
-}: {
-  uri?: string;
-  failed: boolean;
-  onError: () => void;
-  name?: string;
-  size: number;
-}) {
-  const { colors, radii, typography } = useTheme();
-
-  if (uri && !failed) {
-    return (
-      <Image
-        source={{ uri }}
-        accessibilityLabel={`${name ?? "Author"} avatar`}
-        onError={onError}
-        style={{ width: size, height: size, borderRadius: radii.full }}
-      />
-    );
-  }
-
-  return (
-    <View
-      style={[
-        styles.avatarFallback,
-        {
-          width: size,
-          height: size,
-          borderRadius: radii.full,
-          backgroundColor: colors.secondary,
-        },
-      ]}
-    >
-      <ThemedText
-        style={{
-          color: colors.secondaryForeground,
-          fontSize: Math.max(typography.sizes.xs, size * 0.42),
-          fontWeight: typography.weights.bold,
-        }}
-      >
-        {name?.trim().charAt(0).toUpperCase() || "?"}
-      </ThemedText>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  state: {
+  // Top bar
+  topRow: {
+    flexDirection: "row",
     alignItems: "center",
+    height: 52,
+    paddingHorizontal: 12,
+  },
+  topSide: {
+    width: 80,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  topActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  topTitle: {
     flex: 1,
-    gap: 14,
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
+  topButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
     justifyContent: "center",
   },
-  centerText: {
-    textAlign: "center",
+  hairline: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+  },
+  progress: {
+    position: "absolute",
+    left: 0,
+    bottom: 0,
+    height: 2,
+  },
+
+  // Header block
+  kicker: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginLeft: 4,
+  },
+  authorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 14,
   },
   avatarFallback: {
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
-  backLink: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  categoryBadge: {
-    alignSelf: "flex-start",
-  },
-  title: {
-    lineHeight: 36,
-  },
-  metadata: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  authorInline: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  authorName: {
-    fontWeight: "600",
+  cover: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    marginTop: 16,
   },
   tags: {
-    alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-  },
-  tag: {
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  ownerActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  heroImage: {
-    aspectRatio: 16 / 9,
-    width: "100%",
-  },
-  imagePlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
     gap: 8,
   },
-  authorCard: {
-    borderWidth: StyleSheet.hairlineWidth,
+  tag: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
-  authorCardRow: {
-    alignItems: "center",
+
+  // Action bar
+  actionBar: {
     flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  authorCardDetails: {
+  likeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+
+  // States
+  state: {
     flex: 1,
-    gap: 2,
-  },
-  metaCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  metaRow: {
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  articleBody: {
-    width: "100%",
-  },
-  updatedFooter: {
-    alignItems: "center",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  engagement: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  engagementActions: {
-    alignItems: "stretch",
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  engagementButton: {
-    flexGrow: 1,
-  },
-  saveButtonWrap: {
-    borderWidth: StyleSheet.hairlineWidth,
-    flexGrow: 1,
     justifyContent: "center",
+    gap: 14,
   },
-  commentsNotice: {},
+  skelLine: {
+    height: 12,
+    borderRadius: 6,
+  },
+  skelAuthor: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 18,
+  },
+  skelAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  skelImage: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderRadius: 20,
+    marginTop: 18,
+    marginBottom: 6,
+  },
+
+  // Modal
   modalRoot: {
     flex: 1,
     justifyContent: "center",
   },
-  deleteDialog: {
+  dialog: {
     borderWidth: StyleSheet.hairlineWidth,
   },
   dialogActions: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  dialogButton: {
-    flex: 1,
   },
 });
