@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Linking,
   RefreshControl,
@@ -11,10 +10,15 @@ import {
 } from "react-native";
 
 import { useFocusEffect, useRouter } from "expo-router";
+
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import GridFeed from "@/components/home/GridFeed";
+import DraftSectionSwitcher, {
+  type DraftSection,
+} from "@/components/profile/DraftSectionSwitcher";
+import LogoLoader from "@/components/LogoLoader";
 import MinimalTabBar, {
   type ProfileTab,
 } from "@/components/profile/MinimalTabBar";
@@ -25,10 +29,11 @@ import { profileApi, type ProfileData } from "@/api/services/profile";
 
 import { useTheme } from "@/constants/theme";
 
+import { useAuth } from "@/context/AuthContext";
+
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import type { Blog } from "@/types";
-import { useAuth } from "@/context/AuthContext";
 
 // Your theme has no "destructive" token, so errors use this fixed red.
 const ERROR_COLOR = "#DC2626";
@@ -59,6 +64,7 @@ export default function ProfileScreen() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [blogsError, setBlogsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
+  const [draftSection, setDraftSection] = useState<DraftSection>("drafts");
   const [busyBlogId, setBusyBlogId] = useState<string | null>(null);
   const { logout } = useAuth();
 
@@ -144,6 +150,14 @@ export default function ProfileScreen() {
     () => blogs.filter((b) => String(b.status) === "draft"),
     [blogs],
   );
+  const submitted = useMemo(
+    () => blogs.filter((b) => String(b.status) === "submitted"),
+    [blogs],
+  );
+  const rejected = useMemo(
+    () => blogs.filter((b) => String(b.status) === "rejected"),
+    [blogs],
+  );
   // savedBlogs may hold populated blog objects or plain ids. Only objects can
   // be rendered as cards, but every non-empty entry counts toward the stat.
   const savedRaw = useMemo(
@@ -162,6 +176,8 @@ export default function ProfileScreen() {
     posts: published,
     saved,
     drafts,
+    submitted,
+    rejected,
   };
 
   // ---- Actions ------------------------------------------------------------
@@ -204,7 +220,7 @@ export default function ProfileScreen() {
   };
 
   const handlePressItem = (blog: Blog) => {
-    if (activeTab === "drafts") {
+    if (activeTab === "drafts" || activeTab === "submitted") {
       void router.push(`/profile/drafts/${blog.slug}`);
     } else {
       void router.push(`/blog/${blog.slug}`);
@@ -257,13 +273,17 @@ export default function ProfileScreen() {
         edges={["top", "left", "right"]}
         style={[styles.centered, { backgroundColor: colors.background }]}
       >
-        <ActivityIndicator color={colors.primary} />
+        <LogoLoader />
       </SafeAreaView>
     );
   }
 
   const emptyAction =
-    activeTab === "saved" ? undefined : () => void router.push("/blog/create");
+    activeTab === "drafts" && draftSection === "drafts"
+      ? () => void router.push("/blog/create")
+      : undefined;
+  const feedTab =
+    activeTab === "drafts" ? draftSection : activeTab;
 
   return (
     <SafeAreaView
@@ -306,6 +326,12 @@ export default function ProfileScreen() {
         />
 
         <View style={{ minHeight: 420 }}>
+          {activeTab === "drafts" && (
+            <DraftSectionSwitcher
+              value={draftSection}
+              onChange={setDraftSection}
+            />
+          )}
           {!!profileError && (
             <Text
               style={{
@@ -333,13 +359,13 @@ export default function ProfileScreen() {
           ) : (
             // Re-mounts on tab change so the cards stagger in fresh.
             <Animated.View
-              key={activeTab}
+              key={feedTab}
               entering={FadeIn.duration(180)}
               exiting={FadeOut.duration(100)}
             >
               <GridFeed
-                items={itemsByTab[activeTab]}
-                type={activeTab}
+                items={itemsByTab[feedTab]}
+                type={feedTab}
                 busyId={busyBlogId}
                 onPressItem={handlePressItem}
                 onLongPressItem={handleLongPressItem}
