@@ -16,6 +16,7 @@ import {
   Card,
   Chip,
   Dialog,
+  Divider,
   Portal,
   Text,
 } from "react-native-paper";
@@ -42,6 +43,9 @@ const ROLE_FILTERS: { label: string; value: UserRole }[] = [
   { label: "Users", value: "user" },
   { label: "Admins", value: "admin" },
 ];
+
+// Destructive actions read better in red. Swap for a theme token if you have one.
+const DANGER_COLOR = "#DC2626";
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -133,6 +137,11 @@ export default function AdminUsersPage() {
     }
   }, [deleteTarget, showToast]);
 
+  const openUser = useCallback(
+    (id: string) => router.push(`/admin/users/${encodeURIComponent(id)}` as Href),
+    [router],
+  );
+
   if (isInitializing || !isAuthenticated || !isAdmin) {
     return (
       <View
@@ -151,6 +160,12 @@ export default function AdminUsersPage() {
 
   const activeRoleLabel =
     ROLE_FILTERS.find((filter) => filter.value === role)?.label ?? "All roles";
+
+  const cardStyle = {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+  };
 
   return (
     <AdminShell userName={user?.name} onLogout={() => void handleLogout()}>
@@ -182,9 +197,7 @@ export default function AdminUsersPage() {
             >
               Users
             </Text>
-            <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
-              Search and manage user accounts.
-            </Text>
+           
           </View>
           <Button
             mode="contained"
@@ -198,31 +211,37 @@ export default function AdminUsersPage() {
           </Button>
         </View>
 
-        <View style={{flexDirection:"row",alignItems:"center", gap: 8 }}>
-          <View style={{flex:1}}>
-          <SearchBox 
-            initialValue={search}
-            onSearch={setSearch}
-            placeholder="Search by name..."
-          />
+        {/* Search + role filter */}
+        <View style={[styles.toolbar, { gap: spacing.sm }]}>
+          <View style={styles.searchWrapper}>
+            <SearchBox
+              initialValue={search}
+              onSearch={setSearch}
+              placeholder="Search by name..."
+            />
           </View>
           <Button
             mode="outlined"
             icon={({ color, size }) => (
-              <Ionicons
-                name="chevron-down"
-                color={color}
-                size={size}
-              />
+              <Ionicons name="chevron-down" color={color} size={size} />
             )}
             contentStyle={styles.filterButtonContent}
-            style={styles.filterButton}
+            style={[
+              styles.filterButton,
+              {
+                borderColor: role ? colors.primary : colors.border,
+                borderRadius: radii.md,
+              },
+            ]}
+            textColor={role ? colors.primary : colors.foreground}
             onPress={() => setRoleDialogOpen(true)}
+            accessibilityLabel={`Filter by role, currently ${activeRoleLabel}`}
           >
             {activeRoleLabel}
           </Button>
         </View>
 
+        {/* Content states */}
         {loading ? (
           <View style={[styles.loading, { gap: spacing.md }]}>
             <ActivityIndicator color={colors.primary} />
@@ -231,19 +250,12 @@ export default function AdminUsersPage() {
             </Text>
           </View>
         ) : error ? (
-          <Card
-            mode="outlined"
-            style={{
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderRadius: radii.md,
-            }}
-          >
+          <Card mode="outlined" style={cardStyle}>
             <Card.Content style={[styles.emptyState, { gap: spacing.md }]}>
               <Ionicons
                 name="alert-circle-outline"
                 size={34}
-                color={colors.primary}
+                color={DANGER_COLOR}
               />
               <Text
                 variant="bodyMedium"
@@ -253,6 +265,9 @@ export default function AdminUsersPage() {
               </Text>
               <Button
                 mode="outlined"
+                icon={({ color, size }) => (
+                  <Ionicons name="refresh-outline" color={color} size={size} />
+                )}
                 onPress={() => setReloadKey((current) => current + 1)}
               >
                 Try again
@@ -260,14 +275,7 @@ export default function AdminUsersPage() {
             </Card.Content>
           </Card>
         ) : users.length === 0 ? (
-          <Card
-            mode="outlined"
-            style={{
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderRadius: radii.md,
-            }}
-          >
+          <Card mode="outlined" style={cardStyle}>
             <Card.Content style={[styles.emptyState, { gap: spacing.md }]}>
               <Ionicons
                 name="people-outline"
@@ -287,75 +295,73 @@ export default function AdminUsersPage() {
           </Card>
         ) : (
           <View style={{ gap: spacing.md }}>
-            <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
+            <Text
+              variant="labelLarge"
+              style={{ color: colors.mutedForeground }}
+            >
               {users.length} {users.length === 1 ? "user" : "users"}
             </Text>
+
             {users.map((item) => {
               const isUserAdmin = item.role === "admin";
+              const displayName = item.name?.trim() || "Unnamed user";
+
               return (
-                <Card
-                  key={item._id}
-                  mode="outlined"
-                  style={{
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    borderRadius: radii.md,
-                  }}
-                >
+                <Card key={item._id} mode="outlined" style={cardStyle}>
                   <Card.Content style={{ gap: spacing.md }}>
-                    <View style={{flexDirection:"row"}}>
-                    <View style={[styles.userInfo, { gap: spacing.md, flex:1 }]}>
-                      <View
-                        style={[
-                          styles.avatar,
-                          {
-                            backgroundColor: isUserAdmin
-                              ? colors.badgePrimaryBg
-                              : colors.secondary,
-                            borderRadius: radii.full,
-                          },
-                        ]}
+                    {/* Identity row */}
+                    <View style={[styles.userRow, { gap: spacing.md }]}>
+                      <Pressable
+                        accessibilityRole="link"
+                        accessibilityLabel={`View ${item.name || "user"} details`}
+                        onPress={() => openUser(item._id)}
+                        style={[styles.userInfo, { gap: spacing.md }]}
                       >
-                        <Text
-                          variant="titleMedium"
-                          style={{
-                            color: isUserAdmin
-                              ? colors.badgePrimaryText
-                              : colors.secondaryForeground,
-                            fontWeight: "700",
-                          }}
-                        >
-                          {item.name?.trim().charAt(0).toUpperCase() || "?"}
-                        </Text>
-                      </View>
-                      <View style={{ flex: 1, gap: spacing.xs }}>
-                        <Pressable
-                          accessibilityRole="link"
-                          accessibilityLabel={`View ${item.name || "user"} details`}
-                          onPress={() =>
-                            router.push(
-                              `/admin/users/${encodeURIComponent(item._id)}` as Href,
-                            )
-                          }
+                        <View
+                          style={[
+                            styles.avatar,
+                            {
+                              backgroundColor: isUserAdmin
+                                ? colors.badgePrimaryBg
+                                : colors.secondary,
+                              borderRadius: radii.full,
+                            },
+                          ]}
                         >
                           <Text
                             variant="titleMedium"
-                            style={{ color: colors.foreground }}
+                            style={{
+                              color: isUserAdmin
+                                ? colors.badgePrimaryText
+                                : colors.secondaryForeground,
+                              fontWeight: "700",
+                            }}
                           >
-                            {item.name || "Unnamed user"}
+                            {item.name?.trim().charAt(0).toUpperCase() || "?"}
                           </Text>
-                        </Pressable>
-                        <Text
-                          variant="bodySmall"
-                          style={{ color: colors.mutedForeground }}
-                          selectable
-                        >
-                          {item.email || "No email"}
-                        </Text>
-                      </View>
-                    </View>
+                        </View>
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Text
+                            variant="titleMedium"
+                            numberOfLines={1}
+                            style={{
+                              color: colors.foreground,
+                              fontWeight: "600",
+                            }}
+                          >
+                            {displayName}
+                          </Text>
+                          <Text
+                            variant="bodySmall"
+                            numberOfLines={1}
+                            style={{ color: colors.mutedForeground }}
+                            selectable
+                          >
+                            {item.email || "No email"}
+                          </Text>
+                        </View>
+                      </Pressable>
 
-                    <View style={[styles.cardFooter, { gap: spacing.sm }]}>
                       <Chip
                         compact
                         style={{
@@ -371,10 +377,31 @@ export default function AdminUsersPage() {
                       >
                         {isUserAdmin ? "Admin" : "User"}
                       </Chip>
+                    </View>
+
+                    <Divider style={{ backgroundColor: colors.border }} />
+
+                    {/* Actions */}
+                    <View style={styles.cardFooter}>
                       <Button
                         mode="text"
                         compact
                         textColor={colors.primary}
+                        icon={({ color, size }) => (
+                          <Ionicons
+                            name="person-circle-outline"
+                            color={color}
+                            size={size}
+                          />
+                        )}
+                        onPress={() => openUser(item._id)}
+                      >
+                        View details
+                      </Button>
+                      <Button
+                        mode="text"
+                        compact
+                        textColor={DANGER_COLOR}
                         icon={({ color, size }) => (
                           <Ionicons
                             name="trash-outline"
@@ -383,10 +410,10 @@ export default function AdminUsersPage() {
                           />
                         )}
                         onPress={() => setDeleteTarget(item)}
+                        accessibilityLabel={`Delete ${displayName}`}
                       >
                         Delete
                       </Button>
-                    </View>
                     </View>
                   </Card.Content>
                 </Card>
@@ -400,26 +427,39 @@ export default function AdminUsersPage() {
         <Dialog
           visible={roleDialogOpen}
           onDismiss={() => setRoleDialogOpen(false)}
+          style={{ backgroundColor: colors.card, borderRadius: radii.lg ?? radii.md }}
         >
           <Dialog.Title>Filter by role</Dialog.Title>
           <Dialog.Content>
             <View style={{ gap: spacing.sm }}>
-              {ROLE_FILTERS.map((filter) => (
-                <Chip
-                  key={filter.value || "all"}
-                  selected={role === filter.value}
-                  onPress={() => {
-                    setRole(filter.value);
-                    setRoleDialogOpen(false);
-                  }}
-                  style={{
-                    backgroundColor:
-                      role === filter.value ? colors.card : colors.card,
-                  }}
-                >
-                  {filter.label}
-                </Chip>
-              ))}
+              {ROLE_FILTERS.map((filter) => {
+                const selected = role === filter.value;
+                return (
+                  <Chip
+                    key={filter.value || "all"}
+                    selected={selected}
+                    showSelectedOverlay
+                    onPress={() => {
+                      setRole(filter.value);
+                      setRoleDialogOpen(false);
+                    }}
+                    style={{
+                      backgroundColor: selected
+                        ? colors.badgePrimaryBg
+                        : colors.card,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: selected ? colors.primary : colors.border,
+                    }}
+                    textStyle={{
+                      color: selected
+                        ? colors.badgePrimaryText
+                        : colors.foreground,
+                    }}
+                  >
+                    {filter.label}
+                  </Chip>
+                );
+              })}
             </View>
           </Dialog.Content>
           <Dialog.Actions>
@@ -430,12 +470,16 @@ export default function AdminUsersPage() {
         <Dialog
           visible={Boolean(deleteTarget)}
           onDismiss={() => !deleting && setDeleteTarget(null)}
+          style={{ backgroundColor: colors.card, borderRadius: radii.lg ?? radii.md }}
         >
           <Dialog.Title>Delete User</Dialog.Title>
-          <Dialog.Content>
+          <Dialog.Content style={{ gap: spacing.sm }}>
             <Text variant="bodyMedium">
               Are you sure you want to delete &quot;
               {deleteTarget?.name ?? "this user"}&quot;?
+            </Text>
+            <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
+              This action cannot be undone.
             </Text>
           </Dialog.Content>
           <Dialog.Actions>
@@ -443,10 +487,12 @@ export default function AdminUsersPage() {
               Cancel
             </Button>
             <Button
+              mode="contained"
+              buttonColor={DANGER_COLOR}
+              textColor="#FFFFFF"
               onPress={() => void handleDelete()}
               loading={deleting}
               disabled={deleting}
-              textColor={colors.primary}
             >
               Yes, Delete
             </Button>
@@ -471,6 +517,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  toolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  searchWrapper: {
+    flex: 1,
+  },
+  filterButton: {
+    alignSelf: "center",
+  },
+  filterButtonContent: {
+    flexDirection: "row-reverse",
+  },
   loading: {
     minHeight: 180,
     alignItems: "center",
@@ -482,9 +541,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 24,
   },
-  userInfo: {
-    alignItems: "center",
+  userRow: {
     flexDirection: "row",
+    alignItems: "center",
+  },
+  userInfo: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
   },
   avatar: {
     width: 44,
@@ -493,14 +557,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardFooter: {
-    alignItems: "center",
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-  },
-  filterButton: {
-    alignSelf: "flex-start",
-  },
-  filterButtonContent: {
-    flexDirection: "row-reverse",
+    marginHorizontal: -8,
+    marginBottom: -4,
   },
 });

@@ -17,12 +17,12 @@ import {
   ActivityIndicator,
   Button,
   Card,
-  Chip,
   Dialog,
   Divider,
   Portal,
   Text,
 } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AdminShell } from "@/app/admin/AdminShell";
 
@@ -39,8 +39,19 @@ import type { Blog } from "@/types/blog";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import { env } from "@/lib/config/env";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
 
 type ModerationAction = "verify" | "reject";
+
+// Same palette as the admin list and the feed card
+const STATUS_PALETTE: Record<string, { bg: string; fg: string }> = {
+  published: { bg: "#dcfce7", fg: "#15803d" },
+  featured: { bg: "#ede9fe", fg: "#6d28d9" },
+  submitted: { bg: "#fef9c3", fg: "#a16207" },
+  rejected: { bg: "#fee2e2", fg: "#b91c1c" },
+  unpublished: { bg: "#f3f4f6", fg: "#374151" },
+  draft: { bg: "#fef3c7", fg: "#b45309" },
+};
 
 function getParam(value?: string | string[]) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -69,18 +80,39 @@ function formatDate(value?: string) {
       });
 }
 
+function stripHtml(html: string) {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function readingTime(html: string) {
+  const words = stripHtml(html).split(/\s+/).filter(Boolean).length;
+  return `${Math.max(1, Math.round(words / 200))} min read`;
+}
+
 function DetailSkeleton() {
   const { colors, radii, spacing } = useTheme();
-  const blocks = [32, 22, 18, 220, 100, 18, 18];
+  const blocks = [
+    { width: "30%", height: 22 },
+    { width: "90%", height: 32 },
+    { width: "60%", height: 20 },
+    { width: "100%", height: 200 },
+    { width: "100%", height: 14 },
+    { width: "85%", height: 14 },
+    { width: "70%", height: 14 },
+  ] as const;
 
   return (
     <View style={{ gap: spacing.md }}>
-      {blocks.map((height, index) => (
+      {blocks.map((block, index) => (
         <View
-          key={`${height}-${index}`}
+          key={index}
           style={{
-            width: index === 3 ? "100%" : `${70 + (index % 3) * 10}%`,
-            height,
+            width: block.width,
+            height: block.height,
             backgroundColor: colors.muted,
             borderRadius: radii.md,
           }}
@@ -90,8 +122,26 @@ function DetailSkeleton() {
   );
 }
 
+function InfoRow({ label, value }: { label: string; value: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.infoRow}>
+      <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
+        {label}
+      </Text>
+      <Text
+        variant="bodySmall"
+        style={{ color: colors.foreground, fontWeight: "600" }}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 export default function AdminBlogDetailPage() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { slug: slugParam } = useLocalSearchParams<{
     slug?: string | string[];
   }>();
@@ -112,7 +162,8 @@ export default function AdminBlogDetailPage() {
   const [processing, setProcessing] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
 
-  const contentWidth = Math.max(width - spacing.md * 2, 1);
+  // Card.Content adds 16px padding on each side
+  const contentWidth = Math.max(width - spacing.md * 4, 1);
   const imageUri = useMemo(() => getBlogImageUri(blog?.image), [blog?.image]);
 
   useEffect(() => {
@@ -215,12 +266,12 @@ export default function AdminBlogDetailPage() {
     );
   }
 
-  const statusColor =
-    blog?.status === "published" || blog?.status === "featured"
-      ? colors.primary
-      : blog?.status === "rejected"
-        ? colors.mutedForeground
-        : colors.accent;
+  const status = STATUS_PALETTE[blog?.status ?? ""] ?? {
+    bg: colors.badgeBg,
+    fg: colors.badgeText,
+  };
+  const needsReview = blog?.status === "submitted";
+
   const blogTagsStyles = {
     body: {
       color: colors.foreground,
@@ -267,267 +318,367 @@ export default function AdminBlogDetailPage() {
 
   return (
     <AdminShell userName={user?.name} onLogout={() => void handleLogout()}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          {
-            padding: spacing.md,
-            paddingBottom: spacing["4xl"],
-            gap: spacing.lg,
-          },
-        ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        <Button
-          mode="text"
-          icon={({ size, color }) => (
-            <Ionicons name="arrow-back" size={size} color={color} />
-          )}
-          onPress={() => router.replace("/admin/blog")}
-          style={styles.backButton}
+      <View style={styles.screen}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            {
+              padding: spacing.md,
+              // leave room for the sticky action bar
+              paddingBottom: needsReview ? 140 : spacing["4xl"],
+              gap: spacing.lg,
+            },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          showsVerticalScrollIndicator={false}
         >
-          Back to Blogs
-        </Button>
 
-        {loading ? (
-          <DetailSkeleton />
-        ) : error ? (
-          <Card
-            mode="outlined"
-            style={{
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderRadius: radii.md,
-            }}
-          >
-            <Card.Content style={[styles.errorState, { gap: spacing.md }]}>
-              <Ionicons
-                name="alert-circle-outline"
-                size={36}
-                color={colors.primary}
-              />
-              <Text
-                variant="titleMedium"
-                style={{ color: colors.primary, textAlign: "center" }}
-              >
-                {error}
-              </Text>
-              <Button
-                mode="outlined"
-                onPress={() => setReloadKey((current) => current + 1)}
-              >
-                Try again
-              </Button>
-            </Card.Content>
-          </Card>
-        ) : blog ? (
-          <>
-            <View style={{ gap: spacing.md }}>
-              <Text
-                variant="headlineMedium"
-                style={{ color: colors.foreground, fontWeight: "700" }}
-              >
-                {blog.title}
-              </Text>
-
-              {blog.category?.title ? (
-                <View style={styles.categoryRow}>
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: colors.mutedForeground }}
-                  >
-                    Category:
-                  </Text>
-                  <Chip
-                    compact
-                    style={{
-                      backgroundColor: colors.secondary,
-                      borderColor: colors.border,
-                    }}
-                    textStyle={{
-                      color: colors.secondaryForeground,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {blog.category.title}
-                  </Chip>
-                </View>
-              ) : null}
-
-              <View style={[styles.meta, { gap: spacing.sm }]}>
-                <View
-                  style={[
-                    styles.authorInitial,
-                    {
-                      backgroundColor: colors.secondary,
-                      borderRadius: radii.full,
-                    },
-                  ]}
-                >
-                  <Text
-                    variant="labelMedium"
-                    style={{
-                      color: colors.secondaryForeground,
-                      fontWeight: "700",
-                    }}
-                  >
-                    {blog.author?.name?.charAt(0).toUpperCase() ?? "?"}
-                  </Text>
-                </View>
-                <Text variant="bodySmall" style={{ color: colors.foreground }}>
-                  {blog.author?.name ?? "Unknown"}
-                </Text>
-                {formatDate(blog.createdAt) ? (
-                  <Text
-                    variant="bodySmall"
-                    style={{ color: colors.mutedForeground }}
-                  >
-                    · {formatDate(blog.createdAt)}
-                  </Text>
-                ) : null}
-                <Chip
-                  compact
-                  style={{
-                    backgroundColor: colors.muted,
-                    borderColor: statusColor,
-                    borderWidth: 1,
-                  }}
-                  textStyle={{ color: statusColor }}
-                >
-                  {blog.status}
-                </Chip>
-              </View>
-
-              {blog.tags?.length ? (
-                <View style={[styles.tags, { gap: spacing.xs }]}>
-                  {blog.tags.map((tag) => (
-                    <Chip
-                      key={tag}
-                      compact
-                      style={{
-                        backgroundColor: colors.muted,
-                        borderColor: colors.border,
-                      }}
-                    >
-                      {tag}
-                    </Chip>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-
-            {imageUri && !imageFailed ? (
-              <Image
-                source={{ uri: imageUri }}
-                accessibilityLabel={`${blog.title} cover`}
-                onError={() => setImageFailed(true)}
-                resizeMode="cover"
-                style={[
-                  styles.coverImage,
-                  {
-                    height: Math.min(width * 0.72, 380),
-                    borderColor: colors.border,
-                    borderRadius: radii.md,
-                  },
-                ]}
-              />
-            ) : null}
-
+          {loading ? (
+            <DetailSkeleton />
+          ) : error ? (
             <Card
               mode="outlined"
               style={{
                 backgroundColor: colors.card,
                 borderColor: colors.border,
-                borderRadius: radii.md,
+                borderRadius: radii.lg,
               }}
             >
-              <Card.Content style={{ gap: spacing.lg }}>
-                {blog.description ? (
-                  <View style={styles.articleBody}>
-                    <RenderHTML
-                      contentWidth={contentWidth}
-                      source={{ html: blog.description }}
-                      tagsStyles={blogTagsStyles}
-                      renderersProps={{
-                        a: {
-                          onPress: (_event, href) => {
-                            void Linking.openURL(href).catch(() =>
-                              showToast("Unable to open this link.", "error"),
-                            );
-                          },
-                        },
-                      }}
-                    />
-                  </View>
-                ) : (
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: colors.mutedForeground }}
-                  >
-                    This blog has no content.
-                  </Text>
-                )}
-                <Divider />
-                <View style={[styles.dates, { gap: spacing.sm }]}>
-                  <Text
-                    variant="bodySmall"
-                    style={{ color: colors.mutedForeground }}
-                  >
-                    Created: {formatDate(blog.createdAt) ?? "Unknown"}
-                  </Text>
-                  <Text
-                    variant="bodySmall"
-                    style={{ color: colors.mutedForeground }}
-                  >
-                    Last updated: {formatDate(blog.updatedAt) ?? "Unknown"}
-                  </Text>
-                </View>
+              <Card.Content style={[styles.errorState, { gap: spacing.md }]}>
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={36}
+                  color={colors.primary}
+                />
+                <Text
+                  variant="titleMedium"
+                  style={{ color: colors.primary, textAlign: "center" }}
+                >
+                  {error}
+                </Text>
+                <Button
+                  mode="outlined"
+                  icon="refresh"
+                  onPress={() => setReloadKey((current) => current + 1)}
+                >
+                  Try again
+                </Button>
               </Card.Content>
             </Card>
+          ) : blog ? (
+            <>
+              {needsReview ? (
+                <View
+                  style={[
+                    styles.banner,
+                    {
+                      backgroundColor: STATUS_PALETTE.submitted.bg,
+                      borderRadius: radii.md,
+                      padding: spacing.md,
+                      gap: spacing.sm,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="time-outline"
+                    size={20}
+                    color={STATUS_PALETTE.submitted.fg}
+                  />
+                  <View style={styles.bannerText}>
+                    <Text
+                      variant="labelLarge"
+                      style={{ color: STATUS_PALETTE.submitted.fg }}
+                    >
+                      Awaiting your review
+                    </Text>
+                    <Text
+                      variant="bodySmall"
+                      style={{ color: STATUS_PALETTE.submitted.fg }}
+                    >
+                      Verify to publish this blog, or reject it.
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
 
-            {blog.status === "submitted" ? (
-              <View style={[styles.moderationActions, { gap: spacing.md }]}>
-                <Button
-                  mode="outlined"
-                  icon={({ size, color }) => (
-                    <Ionicons
-                      name="checkmark-circle-outline"
-                      size={size}
-                      color={color}
-                    />
-                  )}
-                  onPress={() => setAction("verify")}
-                  textColor={colors.primary}
+              {/* Header */}
+              <View style={{ gap: spacing.md }}>
+              
+
+                <Text
+                  variant="headlineMedium"
+                  style={{
+                    color: colors.foreground,
+                    fontWeight: "700",
+                    lineHeight: 38,
+                  }}
                 >
-                  Verify
-                </Button>
-                <Button
-                  mode="outlined"
-                  icon={({ size, color }) => (
-                    <Ionicons
-                      name="close-circle-outline"
-                      size={size}
-                      color={color}
-                    />
-                  )}
-                  onPress={() => setAction("reject")}
-                  textColor={colors.mutedForeground}
-                >
-                  Reject
-                </Button>
+                  {blog.title}
+                </Text>
+                    <View style={[styles.pillRow, { gap: spacing.sm }]}>
+                  <View
+                    style={[
+                      styles.pill,
+                      {
+                        backgroundColor: status.bg,
+                        borderRadius: radii.full,
+                      },
+                    ]}
+                  >
+                    <Text
+                      variant="labelMedium"
+                      style={{
+                        color: status.fg,
+                        fontWeight: "700",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {blog.status}
+                    </Text>
+                  </View>
+                  {blog.category?.title ? (
+                    <View
+                      style={[
+                        styles.pill,
+                        {
+                          backgroundColor: colors.secondary,
+                          borderRadius: radii.full,
+                        },
+                      ]}
+                    >
+                      <Text
+                        variant="labelMedium"
+                        style={{
+                          color: colors.secondaryForeground,
+                          fontWeight: "600",
+                        }}
+                      >
+                        {blog.category.title}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <View style={[styles.authorRow, { gap: spacing.sm }]}>
+                  <View
+                    style={[
+                      styles.authorInitial,
+                      {
+                        backgroundColor: colors.primary,
+                        borderRadius: radii.full,
+                      },
+                    ]}
+                  >
+                    <Text
+                      variant="labelLarge"
+                      style={{
+                        color: colors.primaryForeground,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {blog.author?.name?.charAt(0).toUpperCase() ?? "?"}
+                    </Text>
+                  </View>
+                  <View style={styles.authorText}>
+                    <Text
+                      variant="titleSmall"
+                      style={{ color: colors.foreground, fontWeight: "600" }}
+                    >
+                      {blog.author?.name ?? "Unknown author"}
+                    </Text>
+                    <Text
+                      variant="bodySmall"
+                      style={{ color: colors.mutedForeground }}
+                    >
+                      {[
+                        formatDate(blog.createdAt),
+                        blog.description ? readingTime(blog.description) : null,
+                      ]
+                        .filter(Boolean)
+                        .join("  ·  ")}
+                    </Text>
+                  </View>
+                </View>
+
+                {blog.tags?.length ? (
+                  <View style={[styles.pillRow, { gap: spacing.xs }]}>
+                    {blog.tags.map((tag) => (
+                      <View
+                        key={tag}
+                        style={[
+                          styles.pill,
+                          {
+                            backgroundColor: colors.badgePrimaryBg,
+                            borderRadius: radii.full,
+                          },
+                        ]}
+                      >
+                        <Text
+                          variant="labelSmall"
+                          style={{ color: colors.badgePrimaryText }}
+                        >
+                          #{tag}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-          </>
+
+              {/* COVER IMAGE: delete this block to hide it */}
+              {imageUri && !imageFailed ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  accessibilityLabel={`${blog.title} cover`}
+                  onError={() => setImageFailed(true)}
+                  resizeMode="cover"
+                  style={[
+                    styles.coverImage,
+                    {
+                      backgroundColor: colors.muted,
+                      borderColor: colors.border,
+                      borderRadius: radii.lg,
+                    },
+                  ]}
+                />
+              ) : null}
+
+              {/* Article */}
+              <Card
+                mode="outlined"
+                style={{
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderRadius: radii.lg,
+                }}
+              >
+                <Card.Content style={{ gap: spacing.md }}>
+                  {blog.description ? (
+                    <View style={styles.articleBody}>
+                      <RenderHTML
+                        contentWidth={contentWidth}
+                        source={{ html: blog.description }}
+                        tagsStyles={blogTagsStyles}
+                        renderersProps={{
+                          a: {
+                            onPress: (_event, href) => {
+                              void Linking.openURL(href).catch(() =>
+                                showToast("Unable to open this link.", "error"),
+                              );
+                            },
+                          },
+                        }}
+                      />
+                    </View>
+                  ) : (
+                    <Text
+                      variant="bodyMedium"
+                      style={{ color: colors.mutedForeground }}
+                    >
+                      This blog has no content.
+                    </Text>
+                  )}
+                </Card.Content>
+              </Card>
+
+              {/* Details */}
+              <Card
+                mode="outlined"
+                style={{
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderRadius: radii.lg,
+                }}
+              >
+                <Card.Content style={{ gap: spacing.sm }}>
+                  <Text
+                    variant="titleSmall"
+                    style={{ color: colors.foreground, fontWeight: "600" }}
+                  >
+                    Details
+                  </Text>
+                  <Divider />
+                  <InfoRow
+                    label="Author"
+                    value={blog.author?.name ?? "Unknown"}
+                  />
+                  <InfoRow
+                    label="Category"
+                    value={blog.category?.title ?? "Uncategorized"}
+                  />
+                  <InfoRow
+                    label="Created"
+                    value={formatDate(blog.createdAt) ?? "Unknown"}
+                  />
+                  <InfoRow
+                    label="Last updated"
+                    value={formatDate(blog.updatedAt) ?? "Unknown"}
+                  />
+                </Card.Content>
+              </Card>
+            </>
+          ) : null}
+        </ScrollView>
+
+        {/* Sticky moderation bar */}
+        {blog && needsReview ? (
+          <View
+            style={[
+              styles.actionBar,
+              {
+                backgroundColor: colors.card,
+                borderTopColor: colors.border,
+                paddingHorizontal: spacing.md,
+                paddingTop: spacing.md,
+                paddingBottom: Math.max(insets.bottom, spacing.md),
+                gap: spacing.md,
+              },
+            ]}
+          >
+            <Button
+              buttonColor={colors.primary}
+              style={styles.actionButton}
+              textColor={colors.primaryForeground}
+              
+              contentStyle={styles.actionButtonContent}
+              icon={({ size, color }) => (
+                <Ionicons
+                  name="close-circle-outline"
+                  size={size}
+                  color={color}
+                />
+              )}
+              onPress={() => setAction("reject")}
+            >
+              Reject
+            </Button>
+            <Button
+              mode="contained"
+              style={styles.actionButton}
+              contentStyle={styles.actionButtonContent}
+              buttonColor={'#049634'}
+
+              textColor={colors.primaryForeground}
+              icon={({ size, color }) => (
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={size}
+                  color={color}
+                />
+              )}
+              onPress={() => setAction("verify")}
+            >
+              Verify
+            </Button>
+          </View>
         ) : null}
-      </ScrollView>
+      </View>
 
       <Portal>
         <Dialog
@@ -537,9 +688,20 @@ export default function AdminBlogDetailPage() {
           <Dialog.Title>
             {action === "verify" ? "Verify blog" : "Reject blog"}
           </Dialog.Title>
-          <Dialog.Content>
+          <Dialog.Content style={{ gap: spacing.sm }}>
+            {blog ? (
+              <Text
+                variant="titleSmall"
+                numberOfLines={2}
+                style={{ color: colors.foreground }}
+              >
+                {blog.title}
+              </Text>
+            ) : null}
             <Text variant="bodyMedium">
-              Are you sure you want to {action} this blog?
+              {action === "verify"
+                ? "This will publish the blog and make it visible to everyone."
+                : "This blog will be marked as rejected and will not be published."}
             </Text>
           </Dialog.Content>
           <Dialog.Actions>
@@ -550,7 +712,9 @@ export default function AdminBlogDetailPage() {
               onPress={() => void handleAction()}
               loading={processing}
               disabled={processing}
-              textColor={action === "verify" ? colors.primary : colors.foreground}
+              textColor={
+                action === "verify" ? colors.primary : colors.foreground
+              }
             >
               {processing
                 ? "Processing..."
@@ -566,6 +730,9 @@ export default function AdminBlogDetailPage() {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   accessLoading: {
     flex: 1,
     alignItems: "center",
@@ -583,44 +750,61 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 32,
   },
-  categoryRow: {
-    alignItems: "center",
+  banner: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    alignItems: "flex-start",
   },
-  meta: {
-    alignItems: "center",
+  bannerText: {
+    flex: 1,
+    gap: 2,
+  },
+  pillRow: {
     flexDirection: "row",
     flexWrap: "wrap",
+    alignItems: "center",
+  },
+  pill: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    justifyContent: "center",
+  },
+  authorRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   authorInitial: {
-    width: 26,
-    height: 26,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
   },
-  tags: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
+  authorText: {
+    flex: 1,
+    gap: 2,
   },
   coverImage: {
     width: "100%",
+    aspectRatio: 16 / 9,
     borderWidth: StyleSheet.hairlineWidth,
   },
   articleBody: {
     width: "100%",
   },
-  dates: {
+  infoRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  moderationActions: {
     alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  actionBar: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    flexWrap: "wrap",
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  actionButton: {
+    flex: 1,
+  },
+  actionButtonContent: {
+    height: 46,
   },
 });

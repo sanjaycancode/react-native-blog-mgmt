@@ -17,6 +17,7 @@ import {
   Button,
   Card,
   Chip,
+  Divider,
   Menu,
   Text,
 } from "react-native-paper";
@@ -46,6 +47,17 @@ const BLOG_STATUS_FILTERS = [
 ] as const;
 
 type BlogStatusFilter = (typeof BLOG_STATUS_FILTERS)[number]["value"];
+
+const STATUS_PALETTE: Record<string, { bg: string; fg: string }> = {
+  published: { bg: "#dcfce7", fg: "#15803d" },
+  featured: { bg: "#ede9fe", fg: "#6d28d9" },
+  submitted: { bg: "#fef9c3", fg: "#a16207" },
+  rejected: { bg: "#fee2e2", fg: "#b91c1c" },
+  unpublished: { bg: "#f3f4f6", fg: "#374151" },
+  draft: { bg: "#fef3c7", fg: "#b45309" },
+};
+
+const DANGER_COLOR = "#DC2626";
 
 function getParam(value?: string | string[]) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -243,6 +255,12 @@ export default function AdminUserDetailPage() {
     );
   }
 
+  const cardStyle = {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+  };
+
   return (
     <AdminShell
       userName={currentUser?.name}
@@ -267,7 +285,20 @@ export default function AdminUserDetailPage() {
         }
         showsVerticalScrollIndicator={false}
       >
-        
+        {/* Back link */}
+        <Button
+          mode="text"
+          compact
+          style={styles.backButton}
+          textColor={colors.mutedForeground}
+          icon={({ color, size }) => (
+            <Ionicons name="arrow-back" color={color} size={size} />
+          )}
+          onPress={() => router.replace("/admin/users" as Href)}
+        >
+          Users
+        </Button>
+
         {loading ? (
           <View style={[styles.loading, { gap: spacing.md }]}>
             <ActivityIndicator color={colors.primary} />
@@ -276,19 +307,12 @@ export default function AdminUserDetailPage() {
             </Text>
           </View>
         ) : error ? (
-          <Card
-            mode="outlined"
-            style={{
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderRadius: radii.md,
-            }}
-          >
+          <Card mode="outlined" style={cardStyle}>
             <Card.Content style={[styles.state, { gap: spacing.md }]}>
               <Ionicons
                 name="alert-circle-outline"
                 size={36}
-                color={colors.primary}
+                color={DANGER_COLOR}
               />
               <Text
                 variant="titleMedium"
@@ -298,7 +322,10 @@ export default function AdminUserDetailPage() {
               </Text>
               <Button
                 mode="outlined"
-                onPress={() =>  router.replace("/admin/users" as Href)}
+                icon={({ color, size }) => (
+                  <Ionicons name="arrow-back" color={color} size={size} />
+                )}
+                onPress={() => router.replace("/admin/users" as Href)}
               >
                 Back to Users
               </Button>
@@ -306,14 +333,8 @@ export default function AdminUserDetailPage() {
           </Card>
         ) : user ? (
           <>
-            <Card
-              mode="outlined"
-              style={{
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                borderRadius: radii.md,
-              }}
-            >
+            {/* Profile card */}
+            <Card mode="outlined" style={cardStyle}>
               <Card.Content style={{ gap: spacing.lg }}>
                 <View style={[styles.profileHeading, { gap: spacing.md }]}>
                   {avatarUri ? (
@@ -321,7 +342,10 @@ export default function AdminUserDetailPage() {
                       source={{ uri: avatarUri }}
                       style={[
                         styles.avatar,
-                        { backgroundColor: colors.secondary },
+                        {
+                          backgroundColor: colors.secondary,
+                          borderColor: colors.border,
+                        },
                       ]}
                       accessibilityLabel={`${displayName} profile photo`}
                     />
@@ -332,6 +356,7 @@ export default function AdminUserDetailPage() {
                         styles.avatarFallback,
                         {
                           backgroundColor: colors.secondary,
+                          borderColor: colors.border,
                           borderRadius: radii.full,
                         },
                       ]}
@@ -361,7 +386,11 @@ export default function AdminUserDetailPage() {
                     <View style={[styles.nameRow, { gap: spacing.xs }]}>
                       <Text
                         variant="headlineSmall"
-                        style={{ color: colors.foreground, fontWeight: "700" }}
+                        style={{
+                          color: colors.foreground,
+                          fontWeight: "700",
+                          flexShrink: 1,
+                        }}
                       >
                         {displayName}
                       </Text>
@@ -374,22 +403,35 @@ export default function AdminUserDetailPage() {
                       ) : null}
                     </View>
                     {user.email ? (
-                      <Text
-                        variant="bodySmall"
-                        selectable
-                        style={{ color: colors.mutedForeground }}
-                      >
-                        {user.email}
-                      </Text>
+                      <View style={[styles.emailRow, { gap: spacing.xs }]}>
+                        <Ionicons
+                          name="mail-outline"
+                          size={14}
+                          color={colors.mutedForeground}
+                        />
+                        <Text
+                          variant="bodySmall"
+                          selectable
+                          style={{ color: colors.mutedForeground, flexShrink: 1 }}
+                        >
+                          {user.email}
+                        </Text>
+                      </View>
                     ) : null}
                     <Chip
                       compact
                       style={{
                         alignSelf: "flex-start",
-                        backgroundColor: colors.secondary,
+                        backgroundColor:
+                          user.role === "admin"
+                            ? colors.badgePrimaryBg
+                            : colors.secondary,
                       }}
                       textStyle={{
-                        color: colors.secondaryForeground,
+                        color:
+                          user.role === "admin"
+                            ? colors.badgePrimaryText
+                            : colors.secondaryForeground,
                         textTransform: "capitalize",
                       }}
                     >
@@ -502,17 +544,31 @@ export default function AdminUserDetailPage() {
               </Card.Content>
             </Card>
 
+            {/* Blogs */}
             <View style={{ gap: spacing.md }}>
               <View style={[styles.blogHeading, { gap: spacing.md }]}>
-                <Text
-                  variant="titleLarge"
-                  style={{ color: colors.foreground, flex: 1 }}
-                >
-                  Blogs by {displayName}
-                </Text>
+                <View style={{ flex: 1, minWidth: 160, gap: 2 }}>
+                  <Text
+                    variant="titleLarge"
+                    style={{ color: colors.foreground, fontWeight: "700" }}
+                  >
+                    Blogs by {displayName}
+                  </Text>
+                  {!blogsLoading && !blogsError && blogs.length > 0 ? (
+                    <Text
+                      variant="bodySmall"
+                      style={{ color: colors.mutedForeground }}
+                    >
+                      {statusFilter === "all"
+                        ? `${blogs.length} ${blogs.length === 1 ? "blog" : "blogs"}`
+                        : `${filteredBlogs.length} of ${blogs.length}`}
+                    </Text>
+                  ) : null}
+                </View>
                 <Menu
                   visible={statusMenuVisible}
                   onDismiss={() => setStatusMenuVisible(false)}
+                  contentStyle={{ backgroundColor: colors.card }}
                   anchor={
                     <Button
                       mode="outlined"
@@ -525,6 +581,14 @@ export default function AdminUserDetailPage() {
                         />
                       )}
                       contentStyle={styles.filterButtonContent}
+                      style={{
+                        borderColor:
+                          statusFilter === "all" ? colors.border : colors.primary,
+                        borderRadius: radii.md,
+                      }}
+                      textColor={
+                        statusFilter === "all" ? colors.foreground : colors.primary
+                      }
                       onPress={() => setStatusMenuVisible(true)}
                     >
                       {activeStatusLabel}
@@ -548,25 +612,19 @@ export default function AdminUserDetailPage() {
               </View>
 
               {blogsLoading ? (
-                <View style={[styles.loading, { gap: spacing.md }]}>
-                  <ActivityIndicator color={colors.primary} />
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: colors.mutedForeground }}
-                  >
-                    Loading blogs...
-                  </Text>
+                <View style={{ gap: spacing.md }}>
+                  <BlogCardSkeleton />
+                  <BlogCardSkeleton />
+                  <BlogCardSkeleton />
                 </View>
               ) : blogsError ? (
-                <Card
-                  mode="outlined"
-                  style={{
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    borderRadius: radii.md,
-                  }}
-                >
+                <Card mode="outlined" style={cardStyle}>
                   <Card.Content style={[styles.state, { gap: spacing.md }]}>
+                    <Ionicons
+                      name="alert-circle-outline"
+                      size={30}
+                      color={DANGER_COLOR}
+                    />
                     <Text
                       variant="bodyMedium"
                       style={{ color: colors.foreground, textAlign: "center" }}
@@ -575,6 +633,13 @@ export default function AdminUserDetailPage() {
                     </Text>
                     <Button
                       mode="outlined"
+                      icon={({ color, size }) => (
+                        <Ionicons
+                          name="refresh-outline"
+                          color={color}
+                          size={size}
+                        />
+                      )}
                       onPress={() => setReloadKey((value) => value + 1)}
                     >
                       Retry
@@ -582,78 +647,47 @@ export default function AdminUserDetailPage() {
                   </Card.Content>
                 </Card>
               ) : blogs.length === 0 ? (
-                <Text
-                  variant="bodyMedium"
-                  style={{ color: colors.mutedForeground }}
-                >
-                  No blogs found for this user.
-                </Text>
+                <Card mode="outlined" style={cardStyle}>
+                  <Card.Content style={[styles.state, { gap: spacing.sm }]}>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={32}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      variant="bodyMedium"
+                      style={{ color: colors.mutedForeground }}
+                    >
+                      No blogs found for this user.
+                    </Text>
+                  </Card.Content>
+                </Card>
               ) : filteredBlogs.length === 0 ? (
-                <Text
-                  variant="bodyMedium"
-                  style={{ color: colors.mutedForeground }}
-                >
-                  No {statusFilter} blogs.
-                </Text>
+                <Card mode="outlined" style={cardStyle}>
+                  <Card.Content style={[styles.state, { gap: spacing.sm }]}>
+                    <Ionicons
+                      name="funnel-outline"
+                      size={32}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      variant="bodyMedium"
+                      style={{ color: colors.mutedForeground }}
+                    >
+                      No {statusFilter} blogs.
+                    </Text>
+                  </Card.Content>
+                </Card>
               ) : (
                 <View style={{ gap: spacing.md }}>
                   {filteredBlogs.map((blog) => (
-                    console.log(blog._id, typeof blog.title, typeof blog.description, typeof blog.image, blog.image),
-                    <Pressable
+                    <UserBlogCard
                       key={blog._id}
-                      accessibilityRole="link"
-                      accessibilityLabel={`Open blog: ${blog.title}`}
-                      onPress={() =>
-                        router.push(
-                          `/admin/blog/${(blog.slug)}` as Href,
-                        )
+                      blog={blog}
+                      onOpen={() =>
+                        router.push(`/admin/blog/${blog.slug}` as Href)
                       }
-                    >
-                      <Card
-                        mode="outlined"
-                        style={{
-                          backgroundColor: colors.card,
-                          borderColor: colors.border,
-                          borderRadius: radii.md,
-                        }}
-                      >
-                        <Card.Content style={{ gap: spacing.sm }}>
-                          <Text
-                            variant="titleMedium"
-                            style={{ color: colors.foreground }}
-                          >
-                            {blog.title}
-                          </Text>
-                          <View style={[styles.blogMeta, { gap: spacing.sm }]}>
-                            <Chip
-                              compact
-                              style={{ backgroundColor: colors.secondary }}
-                              textStyle={{ color: colors.secondaryForeground }}
-                            >
-                              {blog.category?.title ?? "Uncategorized"}
-                            </Chip>
-                            <Chip
-                              compact
-                              style={{ backgroundColor: colors.muted }}
-                              textStyle={{
-                                color: colors.mutedForeground,
-                                textTransform: "capitalize",
-                              }}
-                            >
-                              {blog.status}
-                            </Chip>
-                            {formatDate(blog.createdAt) ? (
-                              <Text
-                                variant="bodySmall"
-                                style={{ color: colors.mutedForeground }}
-                              >
-                                {formatDate(blog.createdAt)}
-                              </Text>
-                            ) : null}
-                          </View>
-                        </Card.Content>
-                      </Card>
-                    </Pressable>
+                    />
                   ))}
                 </View>
               )}
@@ -662,6 +696,146 @@ export default function AdminUserDetailPage() {
         ) : null}
       </ScrollView>
     </AdminShell>
+  );
+}
+
+function UserBlogCard({
+  blog,
+  onOpen,
+}: {
+  blog: AdminBlog;
+  onOpen: () => void;
+}) {
+  const { colors, spacing, radii, typography } = useTheme();
+  const status = STATUS_PALETTE[blog.status] ?? {
+    bg: colors.badgeBg,
+    fg: colors.badgeText,
+  };
+  const dateLabel = formatDate(blog.createdAt) ?? "Date unavailable";
+
+  return (
+    <Card
+      mode="outlined"
+      style={{
+        backgroundColor: colors.card,
+        borderColor: colors.border,
+        borderRadius: radii.lg,
+        overflow: "hidden",
+      }}
+    >
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={`Open blog: ${blog.title}`}
+        onPress={onOpen}
+        style={({ pressed }) => [
+          { padding: spacing.md, gap: spacing.sm, opacity: pressed ? 0.85 : 1 },
+        ]}
+      >
+        <View style={styles.badgeRow}>
+          <View
+            style={[
+              styles.pill,
+              {
+                backgroundColor: status.bg,
+                borderRadius: radii.full,
+                paddingHorizontal: spacing.sm,
+              },
+            ]}
+          >
+            <Text
+              variant="labelSmall"
+              style={{
+                color: status.fg,
+                fontWeight: typography.weights.semibold,
+                textTransform: "capitalize",
+              }}
+            >
+              {blog.status}
+            </Text>
+          </View>
+          <Text variant="labelSmall" style={{ color: colors.mutedForeground }}>
+            {dateLabel}
+          </Text>
+        </View>
+
+        <Text
+          variant="titleMedium"
+          numberOfLines={2}
+          style={{
+            color: colors.foreground,
+            fontWeight: typography.weights.semibold,
+          }}
+        >
+          {blog.title}
+        </Text>
+
+        <View style={styles.metaRow}>
+          <Ionicons
+            name="folder-outline"
+            size={13}
+            color={colors.mutedForeground}
+          />
+          <Text
+            variant="bodySmall"
+            numberOfLines={1}
+            style={[styles.metaText, { color: colors.mutedForeground }]}
+          >
+            {blog.category?.title ?? "Uncategorized"}
+          </Text>
+        </View>
+      </Pressable>
+
+      <Divider />
+
+      <View
+        style={[
+          styles.actions,
+          { paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
+        ]}
+      >
+        <Button mode="text" compact onPress={onOpen} icon="open-in-new">
+          View
+        </Button>
+      </View>
+    </Card>
+  );
+}
+
+function BlogCardSkeleton() {
+  const { colors, spacing, radii } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.skeleton,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          borderRadius: radii.lg,
+          padding: spacing.md,
+          gap: spacing.sm,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.skeletonLine,
+          { width: "30%", backgroundColor: colors.muted },
+        ]}
+      />
+      <View
+        style={[
+          styles.skeletonLine,
+          { width: "90%", height: 16, backgroundColor: colors.muted },
+        ]}
+      />
+      <View
+        style={[
+          styles.skeletonLine,
+          { width: "55%", backgroundColor: colors.muted },
+        ]}
+      />
+    </View>
   );
 }
 
@@ -677,6 +851,7 @@ const styles = StyleSheet.create({
   backButton: {
     alignSelf: "flex-start",
     marginLeft: -8,
+    marginBottom: -8,
   },
   loading: {
     minHeight: 120,
@@ -697,6 +872,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   avatarFallback: {
     alignItems: "center",
@@ -706,6 +882,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
+  },
+  emailRow: {
+    alignItems: "center",
+    flexDirection: "row",
   },
   profileDetails: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -732,9 +912,34 @@ const styles = StyleSheet.create({
   filterButtonContent: {
     flexDirection: "row-reverse",
   },
-  blogMeta: {
-    alignItems: "center",
+  badgeRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  pill: {
+    alignSelf: "flex-start",
+    paddingVertical: 3,
+    justifyContent: "center",
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  metaText: {
+    flex: 1,
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  skeleton: {
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  skeletonLine: {
+    height: 12,
+    borderRadius: 6,
   },
 });

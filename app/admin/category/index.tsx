@@ -14,7 +14,7 @@ import {
   Button,
   Card,
   Dialog,
-  Divider,
+  IconButton,
   Portal,
   Text,
   TextInput,
@@ -33,9 +33,11 @@ import type { AdminCategory } from "@/types/admin";
 
 import { getErrorMessage } from "@/utils/errorMessage";
 
+const TITLE_MAX_LENGTH = 100;
+
 export default function AdminCategoriesPage() {
   const router = useRouter();
-  const { colors, spacing, radii } = useTheme();
+  const { colors, spacing, radii, typography } = useTheme();
   const { session, isAuthenticated, isInitializing, logout } = useAuth();
   const { showToast } = useToast();
   const user = session?.user;
@@ -217,46 +219,57 @@ export default function AdminCategoriesPage() {
             colors={[colors.primary]}
           />
         }
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
         <View style={[styles.heading, { gap: spacing.md }]}>
-          <View style={{ flex: 1, gap: spacing.xs }}>
+          <View style={styles.headingText}>
             <Text
               variant="headlineSmall"
-              style={{ color: colors.foreground, fontWeight: "700" }}
+              style={{
+                color: colors.foreground,
+                fontWeight: typography.weights.semibold,
+              }}
             >
               Categories
             </Text>
-            <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
-              Create and manage blog categories.
-            </Text>
+            
           </View>
           <Button
             mode="contained"
+            compact
             icon={({ color, size }) => (
               <Ionicons name="add" color={color} size={size} />
             )}
             onPress={openCreate}
-            compact
           >
             Add
           </Button>
         </View>
 
+        {/* Count */}
+        {!loading && !error && categories.length > 0 ? (
+          <View style={styles.countRow}>
+            
+            
+          </View>
+        ) : null}
+
         {loading ? (
-          <View style={[styles.loading, { gap: spacing.md }]}>
-            <ActivityIndicator color={colors.primary} />
-            <Text variant="bodyMedium" style={{ color: colors.mutedForeground }}>
-              Loading categories...
-            </Text>
+          <View style={{ gap: spacing.md }}>
+            <CategorySkeleton />
+            <CategorySkeleton />
+            <CategorySkeleton />
+            <CategorySkeleton />
           </View>
         ) : error ? (
           <Card
             mode="outlined"
             style={{
               backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderRadius: radii.md,
+              borderColor: colors.primary,
+              borderRadius: radii.lg,
             }}
           >
             <Card.Content style={[styles.emptyState, { gap: spacing.md }]}>
@@ -267,12 +280,13 @@ export default function AdminCategoriesPage() {
               />
               <Text
                 variant="bodyMedium"
-                style={{ color: colors.foreground, textAlign: "center" }}
+                style={{ color: colors.primary, textAlign: "center" }}
               >
                 {error}
               </Text>
               <Button
                 mode="outlined"
+                icon="refresh"
                 onPress={() => setReloadKey((current) => current + 1)}
               >
                 Try again
@@ -285,15 +299,22 @@ export default function AdminCategoriesPage() {
             style={{
               backgroundColor: colors.card,
               borderColor: colors.border,
-              borderRadius: radii.md,
+              borderRadius: radii.lg,
             }}
           >
-            <Card.Content style={[styles.emptyState, { gap: spacing.md }]}>
-              <Ionicons
-                name="pricetags-outline"
-                size={34}
-                color={colors.mutedForeground}
-              />
+            <Card.Content style={[styles.emptyState, { gap: spacing.sm }]}>
+              <View
+                style={[
+                  styles.emptyIcon,
+                  { backgroundColor: colors.muted, borderRadius: radii.full },
+                ]}
+              >
+                <Ionicons
+                  name="pricetags-outline"
+                  size={28}
+                  color={colors.mutedForeground}
+                />
+              </View>
               <Text variant="titleMedium" style={{ color: colors.foreground }}>
                 No categories yet
               </Text>
@@ -301,136 +322,69 @@ export default function AdminCategoriesPage() {
                 variant="bodySmall"
                 style={{ color: colors.mutedForeground, textAlign: "center" }}
               >
-                Add a category to organize blog posts.
+                Add your first category to start organizing blog posts.
               </Text>
+              <Button
+                mode="contained"
+                compact
+                onPress={openCreate}
+                icon={({ color, size }) => (
+                  <Ionicons name="add" color={color} size={size} />
+                )}
+                style={{ marginTop: spacing.xs }}
+              >
+                Add category
+              </Button>
             </Card.Content>
           </Card>
         ) : (
-          <View style={{ gap: spacing.md }}>
-            <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
-              {categories.length}{" "}
-              {categories.length === 1 ? "category" : "categories"}
-            </Text>
-
-{categories.map((category) => (
-  <Card
-    key={category._id}
-    mode="outlined"
-    style={[
-      styles.categoryCardContainer,
-      {
-        backgroundColor: colors.card,
-        borderColor: colors.border,
-        borderRadius: radii.lg,
-      },
-    ]}
-  >
-    <Card.Content style={styles.categoryCard}>
-      {/* Category icon and details */}
-      <View style={styles.categoryInfo}>
-        <View
-          style={[
-            styles.categoryIcon,
-            {
-              backgroundColor: colors.secondary,
-              borderRadius: radii.md,
-            },
-          ]}
-        >
-          <Ionicons
-            name="pricetag-outline"
-            size={20}
-            color={colors.primary}
-          />
-        </View>
-
-        <View style={styles.categoryDetails}>
-          <Text
-            variant="titleMedium"
-            numberOfLines={2}
-            style={{
-              color: colors.foreground,
-              fontWeight: "600",
-            }}
-          >
-            {category.title || "Untitled category"}
-          </Text>
-
-          {category.createdAt ? (
-            <Text
-              variant="bodySmall"
-              style={{ color: colors.mutedForeground }}
-            >
-              Created{" "}
-              {new Date(category.createdAt).toLocaleDateString()}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-
-      <View style={styles.actions}>
-        <Button
-     
-          compact
-          icon={({ color, size }) => (
-            <Ionicons
-            mode="text"
-              name="create-outline"
-              color={color}
-              size={15}
-            />
-          )}
-          onPress={() => openEdit(category)}
-          style={styles.actionButton}
-          contentStyle={styles.actionButtonContent}
-          labelStyle={styles.actionButtonLabel}
-        >
-          Edit
-        </Button>
-
-        <Button
-          mode="text"
-          compact
-          textColor={colors.primary}
-          icon={({ color, size }) => (
-            <Ionicons
-              name="trash-outline"
-              color={color}
-              size={size}
-            />
-          )}
-          onPress={() => setDeleteTarget(category)}
-          style={styles.actionButton}
-          contentStyle={styles.actionButtonContent}
-          labelStyle={styles.actionButtonLabel}
-        >
-          Delete
-        </Button>
-      </View>
-    </Card.Content>
-  </Card>
-))}
-
+          <View style={{ gap: spacing.sm }}>
+            {categories.map((category) => (
+              <CategoryRow
+                key={category._id}
+                category={category}
+                onEdit={() => openEdit(category)}
+                onDelete={() => setDeleteTarget(category)}
+              />
+            ))}
           </View>
         )}
       </ScrollView>
 
       <Portal>
-        <Dialog visible={dialogOpen} onDismiss={closeCategoryDialog}>
+        {/* Add / edit dialog */}
+        <Dialog
+          visible={dialogOpen}
+          onDismiss={closeCategoryDialog}
+          style={{ backgroundColor: colors.background }}
+        >
           <Dialog.Title>
-            {editingCategory ? "Edit Category" : "Add Category"}
+            {editingCategory ? "Edit category" : "Add category"}
           </Dialog.Title>
-          <Dialog.Content>
+          <Dialog.Content style={{ gap: spacing.sm }}>
+            <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
+              {editingCategory
+                ? "Rename this category. Existing blogs keep it."
+                : "Choose a short, clear name readers will recognize."}
+            </Text>
             <TextInput
               autoFocus
-              label={editingCategory ? "New title" : "Category title"}
+              label="Category name"
               mode="outlined"
               value={title}
               onChangeText={setTitle}
               onSubmitEditing={() => void handleSave()}
               returnKeyType="done"
               disabled={saving}
-              maxLength={100}
+              maxLength={TITLE_MAX_LENGTH}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
+              style={{ backgroundColor: colors.card }}
+              right={
+                <TextInput.Affix
+                  text={`${title.length}/${TITLE_MAX_LENGTH}`}
+                />
+              }
             />
           </Dialog.Content>
           <Dialog.Actions>
@@ -438,6 +392,7 @@ export default function AdminCategoriesPage() {
               Cancel
             </Button>
             <Button
+              mode="contained"
               onPress={() => void handleSave()}
               loading={saving}
               disabled={saving || !title.trim()}
@@ -447,22 +402,31 @@ export default function AdminCategoriesPage() {
           </Dialog.Actions>
         </Dialog>
 
+        {/* Delete dialog */}
         <Dialog
           visible={Boolean(deleteTarget)}
           onDismiss={() => !deleting && setDeleteTarget(null)}
+          style={{ backgroundColor: colors.background }}
         >
-          <Dialog.Title>Delete Category</Dialog.Title>
-          <Dialog.Content>
+          <Dialog.Title>Delete category</Dialog.Title>
+          <Dialog.Content style={{ gap: spacing.sm }}>
+            <Text
+              variant="titleSmall"
+              numberOfLines={2}
+              style={{
+                color: colors.foreground,
+                fontWeight: typography.weights.semibold,
+              }}
+            >
+              {deleteTarget?.title ?? "this category"}
+            </Text>
             <Text variant="bodyMedium">
-              Are you sure you want to delete &quot;
-              {deleteTarget?.title ?? "this category"}&quot;?
+              This can&apos;t be undone. Blogs that use it will show as
+              uncategorized.
             </Text>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button
-              onPress={() => setDeleteTarget(null)}
-              disabled={deleting}
-            >
+            <Button onPress={() => setDeleteTarget(null)} disabled={deleting}>
               Cancel
             </Button>
             <Button
@@ -471,7 +435,7 @@ export default function AdminCategoriesPage() {
               disabled={deleting}
               textColor={colors.primary}
             >
-              Yes, Delete
+              Yes, delete
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -480,6 +444,146 @@ export default function AdminCategoriesPage() {
   );
 }
 
+/* ─── Category row ────────────────────────────────────────────── */
+
+function CategoryRow({
+  category,
+  onEdit,
+  onDelete,
+}: {
+  category: AdminCategory;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { colors, spacing, radii, typography } = useTheme();
+  const created = category.createdAt ? new Date(category.createdAt) : null;
+  const dateLabel =
+    created && !Number.isNaN(created.getTime())
+      ? created.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : null;
+  const name = category.title || "Untitled category";
+
+  return (
+    <View
+      style={[
+        styles.row,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          borderRadius: radii.lg,
+          paddingVertical: spacing.sm,
+          paddingLeft: spacing.md,
+          paddingRight: spacing.xs,
+          gap: spacing.md,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.iconTile,
+          { backgroundColor: colors.badgePrimaryBg, borderRadius: radii.md },
+        ]}
+      >
+        <Ionicons
+          name="pricetag-outline"
+          size={20}
+          color={colors.badgePrimaryText}
+        />
+      </View>
+
+      <View style={styles.rowText}>
+        <Text
+          variant="titleSmall"
+          numberOfLines={2}
+          style={{
+            color: colors.foreground,
+            fontWeight: typography.weights.semibold,
+          }}
+        >
+          {name}
+        </Text>
+        {dateLabel ? (
+          <View style={styles.dateRow}>
+            <Ionicons
+              name="calendar-outline"
+              size={10}
+              color={colors.mutedForeground}
+            />
+            <Text variant="bodySmall"  style={{fontSize:10, color: colors.mutedForeground }}>
+              Created {dateLabel}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.rowActions}>
+        <IconButton
+          accessibilityLabel={`Edit ${name}`}
+          icon={({ size, color }) => (
+            <Ionicons name="create-outline" size={size} color={color} />
+          )}
+          iconColor={colors.mutedForeground}
+          size={20}
+          onPress={onEdit}
+        />
+        <IconButton
+          accessibilityLabel={`Delete ${name}`}
+          icon={({ size, color }) => (
+            <Ionicons name="trash-outline" size={size} color={color} />
+          )}
+          iconColor={colors.primary}
+          size={20}
+          onPress={onDelete}
+        />
+      </View>
+    </View>
+  );
+}
+
+
+function CategorySkeleton() {
+  const { colors, spacing, radii } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.row,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          borderRadius: radii.lg,
+          padding: spacing.md,
+          gap: spacing.md,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.iconTile,
+          { backgroundColor: colors.muted, borderRadius: radii.md },
+        ]}
+      />
+      <View style={[styles.rowText, { gap: spacing.sm }]}>
+        <View
+          style={[
+            styles.skeletonLine,
+            { width: "60%", height: 16, backgroundColor: colors.muted },
+          ]}
+        />
+        <View
+          style={[
+            styles.skeletonLine,
+            { width: "35%", backgroundColor: colors.muted },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   accessLoading: {
@@ -487,83 +591,69 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   content: {
     flexGrow: 1,
   },
-
   heading: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-
-  loading: {
-    minHeight: 180,
+  headingText: {
+    flex: 1,
+    gap: 2,
+  },
+  countRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  countPill: {
+    minWidth: 28,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     alignItems: "center",
     justifyContent: "center",
   },
-
   emptyState: {
     minHeight: 180,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 24,
   },
-
-  categoryCardContainer: {
-    borderWidth: 1,
-    marginBottom: 0,
-    elevation: 0,
-  },
-
-  categoryCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-    gap: 8,
-  },
-
-  categoryInfo: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-
-  categoryIcon: {
-    width: 38,
-    height: 38,
+  emptyIcon: {
+    width: 56,
+    height: 56,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  categoryDetails: {
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  iconTile: {
+    width: 35,
+    height: 35,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rowText: {
     flex: 1,
     minWidth: 0,
     gap: 4,
   },
-
-  actions: {
+  dateRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+  },
+  rowActions: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 2,
   },
-
-  actionButton: {
-    marginHorizontal: 0,
-  },
-
-  actionButtonContent: {
-    paddingHorizontal: 0,
-  },
-
-  actionButtonLabel: {
-    fontSize: 12,
-    marginHorizontal: 2,
+  skeletonLine: {
+    height: 12,
+    borderRadius: 6,
   },
 });
-

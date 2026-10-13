@@ -9,11 +9,13 @@ import {
 
 import { type Href, useRouter } from "expo-router";
 
+import { Ionicons } from "@expo/vector-icons";
 import {
   ActivityIndicator,
   Button,
   Card,
   Chip,
+  Divider,
   Text,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,10 +34,18 @@ import type { Blog } from "@/types/blog";
 import type { Category } from "@/types/category";
 
 import { getErrorMessage } from "@/utils/errorMessage";
-import { Ionicons } from "@expo/vector-icons";
 
 const BLOG_LIMIT = 100;
 const STATUSES = ["published", "unpublished", "submitted", "rejected"] as const;
+
+const STATUS_PALETTE: Record<string, { bg: string; fg: string }> = {
+  published: { bg: "#dcfce7", fg: "#15803d" },
+  featured: { bg: "#ede9fe", fg: "#6d28d9" },
+  submitted: { bg: "#fef9c3", fg: "#a16207" },
+  rejected: { bg: "#fee2e2", fg: "#b91c1c" },
+  unpublished: { bg: "#f3f4f6", fg: "#374151" },
+  draft: { bg: "#fef3c7", fg: "#b45309" },
+};
 
 type DashboardStats = {
   totalBlogs: number;
@@ -241,10 +251,26 @@ export default function AdminOverview() {
         ) : (
           <>
             <View style={[styles.statsGrid, { gap: spacing.sm }]}>
-              <StatCard label="Total blogs" value={stats.totalBlogs} />
-              <StatCard label="Published" value={stats.published} />
-              <StatCard label="Total users" value={stats.totalUsers} />
-              <StatCard label="Categories" value={stats.totalCategories} />
+              <StatCard
+                label="Total blogs"
+                value={stats.totalBlogs}
+                onPress={() => router.push("/admin/blog" as Href)}
+              />
+              <StatCard
+                label="Published"
+                value={stats.published}
+                onPress={() => router.push("/admin/blog" as Href)}
+              />
+              <StatCard
+                label="Total users"
+                value={stats.totalUsers}
+                onPress={() => router.push("/admin/users" as Href)}
+              />
+              <StatCard
+                label="Categories"
+                value={stats.totalCategories}
+                onPress={() => router.push("/admin/category" as Href)}
+              />
             </View>
 
             <View style={{ gap: spacing.md }}>
@@ -266,7 +292,11 @@ export default function AdminOverview() {
                 >
                   New blogs to review
                 </Text>
-                <Chip mode="outlined" compact textStyle={{color:colors.foreground}}>
+                <Chip
+                  mode="outlined"
+                  compact
+                  textStyle={{ color: colors.foreground }}
+                >
                   {submittedBlogs.length} pending
                 </Chip>
               </View>
@@ -283,110 +313,15 @@ export default function AdminOverview() {
                 </Card>
               ) : (
                 submittedBlogs.map((blog) => (
-                  <Pressable
+                  <ReviewBlogCard
                     key={blog._id}
-                    accessibilityRole="link"
-                    accessibilityLabel={`Review ${blog.title}`}
-                    onPress={() =>
+                    blog={blog}
+                    onOpen={() =>
                       router.push(
                         `/admin/blog/${encodeURIComponent(blog.slug)}` as Href,
                       )
                     }
-                    style={({ pressed }) => ({
-                      opacity: pressed ? 0.8 : 1,
-                    })}
-                  >
-                    <Card
-                      mode="outlined"
-                      style={{
-                        backgroundColor: colors.card,
-                        borderColor: colors.border,
-                        borderRadius: radii.lg,
-                      }}
-                    >
-                      <Card.Content
-                        style={{ paddingVertical: spacing.md, gap: spacing.md }}
-                      >
-                        <View style={styles.reviewCardHeader}>
-                          <View
-                            style={[
-                              styles.reviewIcon,
-                              { backgroundColor: colors.secondary },
-                            ]}
-                          >
-                            <Ionicons
-                              name="document-text-outline"
-                              size={18}
-                              color={colors.primary}
-                            />
-                          </View>
-
-                          <View style={{ flex: 1, gap: 4 }}>
-                            <Text
-                              variant="titleMedium"
-                              style={{
-                                color: colors.foreground,
-                                fontSize:15,
-                                fontWeight: "600",
-                                
-                              }}
-                            >
-                              {blog.title}
-                            </Text>
-
-                            <View style={styles.reviewAuthor}>
-                              <Ionicons
-                                name="person-outline"
-                                size={14}
-                                color={colors.mutedForeground}
-                              />
-                              <Text
-                                variant="bodySmall"
-                                style={{
-                                  color: colors.mutedForeground,
-                                  flexShrink: 1,
-                                }}
-                                numberOfLines={1}
-                              >
-                                {blog.author?.name ?? "Unknown author"}
-                              </Text>
-                            </View>
-                          </View>
-
-                          <Ionicons
-                            name="chevron-forward"
-                            size={19}
-                            color={colors.mutedForeground}
-                          />
-                        </View>
-
-                        <View style={[styles.reviewMeta, { gap: spacing.sm }]}>
-                          <Chip
-                            compact
-                            
-                            mode="outlined"
-                            textStyle={{ fontSize: 12 }}
-                            style={{ borderColor: colors.border }}
-                          >
-                            {blog.category?.title ?? "Uncategorized"}
-                          </Chip>
-
-                          <Chip
-                            compact
-                            mode="flat"
-                            textStyle={{
-                              fontSize: 12,
-                              color: colors.primary,
-                              fontWeight: "600",
-                            }}
-                            style={{ backgroundColor: colors.secondary }}
-                          >
-                            {blog.status}
-                          </Chip>
-                        </View>
-                      </Card.Content>
-                    </Card>
-                  </Pressable>
+                  />
                 ))
               )}
             </View>
@@ -397,25 +332,165 @@ export default function AdminOverview() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
-  const { colors, radii, spacing } = useTheme();
+function ReviewBlogCard({
+  blog,
+  onOpen,
+}: {
+  blog: Blog;
+  onOpen: () => void;
+}) {
+  const { colors, spacing, radii, typography } = useTheme();
+  const status = STATUS_PALETTE[blog.status] ?? {
+    bg: colors.badgeBg,
+    fg: colors.badgeText,
+  };
+  const createdDate = new Date(blog.createdAt);
+  const dateLabel = Number.isNaN(createdDate.getTime())
+    ? "Date unavailable"
+    : createdDate.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
 
   return (
     <Card
-      style={[
-        styles.statCard,
-        { backgroundColor: colors.card, borderRadius: radii.md },
+      mode="outlined"
+      style={{
+        backgroundColor: colors.card,
+        borderColor: colors.border,
+        borderRadius: radii.lg,
+        overflow: "hidden",
+      }}
+    >
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={`Review ${blog.title}`}
+        onPress={onOpen}
+        style={({ pressed }) => [
+          { padding: spacing.md, gap: spacing.sm, opacity: pressed ? 0.85 : 1 },
+        ]}
+      >
+        <View style={styles.badgeRow}>
+          <View
+            style={[
+              styles.pill,
+              {
+                backgroundColor: status.bg,
+                borderRadius: radii.full,
+                paddingHorizontal: spacing.sm,
+              },
+            ]}
+          >
+            <Text
+              variant="labelSmall"
+              style={{
+                color: status.fg,
+                fontWeight: typography.weights.semibold,
+                textTransform: "capitalize",
+              }}
+            >
+              {blog.status}
+            </Text>
+          </View>
+          <Text variant="labelSmall" style={{ color: colors.mutedForeground }}>
+            {dateLabel}
+          </Text>
+        </View>
+
+        <Text
+          variant="titleMedium"
+          numberOfLines={2}
+          style={{
+            color: colors.foreground,
+            fontWeight: typography.weights.semibold,
+          }}
+        >
+          {blog.title}
+        </Text>
+
+        <View style={styles.metaRow}>
+          <Ionicons
+            name="person-outline"
+            size={13}
+            color={colors.mutedForeground}
+          />
+          <Text
+            variant="bodySmall"
+            numberOfLines={1}
+            style={[styles.metaText, { color: colors.mutedForeground }]}
+          >
+            {blog.author?.name ?? "Unknown author"}
+            {"  ·  "}
+            {blog.category?.title ?? "Uncategorized"}
+          </Text>
+        </View>
+      </Pressable>
+
+      <Divider />
+
+      <View
+        style={[
+          styles.actions,
+          { paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
+        ]}
+      >
+        <Button mode="text" compact onPress={onOpen} icon="open-in-new">
+          Review
+        </Button>
+      </View>
+    </Card>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value: number;
+  onPress: () => void;
+}) {
+  const { colors, radii } = useTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value}. Open related admin page.`}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.statCardPressable,
+        { opacity: pressed ? 0.75 : 1 },
       ]}
     >
-      <Card.Content style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text variant="bodySmall" style={{ flex: 1, color: colors.foreground }}>
-          {label}
-        </Text>
-        <Text variant="bodyLarge" style={{ color: colors.foreground }}>
-          {value}
-        </Text>
-      </Card.Content>
-    </Card>
+      <Card
+        style={[
+          styles.statCard,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderRadius: radii.md,
+          },
+        ]}
+      >
+        <Card.Content style={styles.statCardContent}>
+          <Text
+            variant="bodySmall"
+            numberOfLines={1}
+            style={{ color: colors.mutedForeground, flexShrink: 1 }}
+          >
+            {label}
+          </Text>
+          <Text
+            variant="titleLarge"
+            style={{ color: colors.foreground, fontWeight: "700" }}
+          >
+            {value}
+          </Text>
+        </Card.Content>
+      </Card>
+    </Pressable>
   );
 }
 
@@ -701,8 +776,17 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-  statCard: {
+  statCardPressable: {
     width: "48.5%",
+  },
+  statCard: {
+    width: "100%",
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  statCardContent: {
+    minHeight: 88,
+    justifyContent: "space-between",
+    gap: 8,
   },
   donutWrap: {
     alignItems: "center",
@@ -787,29 +871,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
-  reviewCardHeader: {
+  // Review card (matches the admin blogs page card)
+  badgeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    justifyContent: "space-between",
+    gap: 8,
   },
-
-  reviewIcon: {
-    width: 35,
-    height: 35,
-    borderRadius: 12,
-    alignItems: "center",
+  pill: {
+    alignSelf: "flex-start",
+    paddingVertical: 3,
     justifyContent: "center",
   },
-
-  reviewAuthor: {
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
   },
-
-  reviewMeta: {
+  metaText: {
+    flex: 1,
+  },
+  actions: {
     flexDirection: "row",
     alignItems: "center",
-    flexWrap: "wrap",
   },
 });
