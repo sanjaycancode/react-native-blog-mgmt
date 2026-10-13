@@ -1,17 +1,17 @@
-import { Redirect, Stack, usePathname } from "expo-router";
+import { Stack } from "expo-router";
 
 import { useAuth } from "@/context/AuthContext";
-import iconSet from "@expo/vector-icons/build/Fontisto";
 
 export default function AuthLayout() {
-  const { isAuthenticated, isInitializing } = useAuth();
-  const pathname = usePathname();
+  const { isInitializing } = useAuth();
 
   if (isInitializing) return null;
 
   return (
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="appearance" options={{ title: "Appearance" }} />
     </Stack>
   );

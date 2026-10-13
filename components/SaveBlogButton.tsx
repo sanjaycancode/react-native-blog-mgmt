@@ -1,7 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
-
-import { useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 
@@ -22,9 +20,34 @@ export function SaveBlogButton({ blogId }: SaveBlogButtonProps) {
   const { colors, spacing } = useTheme();
   const { isAuthenticated, isInitializing } = useAuth();
   const { showToast } = useToast();
-  const router = useRouter();
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (isInitializing || !isAuthenticated) return;
+
+    let cancelled = false;
+    void profileApi
+      .get()
+      .then((response) => {
+        if (cancelled) return;
+        const savedBlogs = response.data.profile?.savedBlogs ?? [];
+        setIsSaved(
+          savedBlogs.some((entry) =>
+            typeof entry === "string"
+              ? entry === blogId
+              : (entry as { _id?: string })?._id === blogId,
+          ),
+        );
+      })
+      .catch(() => {
+        // The save action remains available when profile hydration fails.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [blogId, isAuthenticated, isInitializing]);
 
   const handleClick = async () => {
     // if (!isAuthenticated) {

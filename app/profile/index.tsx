@@ -15,10 +15,10 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import GridFeed from "@/components/home/GridFeed";
+import LogoLoader from "@/components/LogoLoader";
 import DraftSectionSwitcher, {
   type DraftSection,
 } from "@/components/profile/DraftSectionSwitcher";
-import LogoLoader from "@/components/LogoLoader";
 import MinimalTabBar, {
   type ProfileTab,
 } from "@/components/profile/MinimalTabBar";
@@ -53,9 +53,14 @@ function getExternalHref(value: string) {
   return /^https?:\/\//i.test(value) ? value : `https://${value}`;
 }
 
+function getOwnerId(value: { _id?: string; id?: string } | undefined) {
+  return value?._id ?? value?.id;
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { colors, typography, spacing } = useTheme();
+  const { logout, session } = useAuth();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -66,8 +71,6 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
   const [draftSection, setDraftSection] = useState<DraftSection>("drafts");
   const [busyBlogId, setBusyBlogId] = useState<string | null>(null);
-  const { logout } = useAuth();
-
   const handleLogout = () => {
     Alert.alert("Log out?", "You'll need need to sign in again. ", [
       { text: "Cancel", style: "cancel" },
@@ -111,7 +114,31 @@ export default function ProfileScreen() {
     }
 
     if (profileResult.status === "fulfilled") {
-      setProfile(profileResult.value.data.profile ?? null);
+      const profileData = profileResult.value.data.profile ?? null;
+      if (profileData?.savedBlogs?.length) {
+        const savedEntries = profileData.savedBlogs;
+        const savedIds = savedEntries
+          .filter((entry): entry is string => typeof entry === "string")
+          .filter((id) => id.length > 0);
+        if (savedIds.length > 0) {
+          const resolved = await Promise.allSettled(
+            savedIds.map((id) => blogApi.getById(id)),
+          );
+          const resolvedById = new Map<string, Blog>();
+          resolved.forEach((result) => {
+            if (result.status === "fulfilled") {
+              const blog = result.value.data.result;
+              resolvedById.set(blog._id, blog);
+            }
+          });
+          profileData.savedBlogs = savedEntries.map((entry) =>
+            typeof entry === "string"
+              ? (resolvedById.get(entry) ?? entry)
+              : entry,
+          );
+        }
+      }
+      setProfile(profileData);
       setProfileError(null);
     } else if (isProfileMissing(profileResult.reason)) {
       setProfile(null);
@@ -171,9 +198,22 @@ export default function ProfileScreen() {
     () => savedRaw.filter((b): b is Blog => typeof b === "object"),
     [savedRaw],
   );
+  const currentUserId =
+    getOwnerId(profile?.user) ?? getOwnerId(session?.user);
+  const posts = useMemo(() => {
+    const byId = new Map(published.map((blog) => [blog._id, blog]));
+    saved
+      .filter(
+        (blog) =>
+          String(blog.status) === "published" &&
+          getOwnerId(blog.author) === currentUserId,
+      )
+      .forEach((blog) => byId.set(blog._id, blog));
+    return Array.from(byId.values());
+  }, [currentUserId, published, saved]);
 
   const itemsByTab: Record<ProfileTab, Blog[]> = {
-    posts: published,
+    posts,
     saved,
     drafts,
     submitted,
@@ -219,9 +259,36 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleRemoveSaved = async (blog: Blog) => {
+    setBusyBlogId(blog._id);
+    try {
+      await profileApi.removeSavedBlog(blog._id);
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              savedBlogs: (current.savedBlogs ?? []).filter((entry) =>
+                typeof entry === "string"
+                  ? entry !== blog._id
+                  : (entry as Blog)?._id !== blog._id,
+              ),
+            }
+          : current,
+      );
+    } catch (error) {
+      Alert.alert("Couldn't remove saved blog", getErrorMessage(error));
+    } finally {
+      setBusyBlogId(null);
+    }
+  };
+
   const handlePressItem = (blog: Blog) => {
     if (activeTab === "drafts" || activeTab === "submitted") {
-      void router.push(`/profile/drafts/${blog.slug}`);
+      if (draftSection === "drafts") {
+        void router.push(`/profile/drafts/${blog.slug}`);
+      } else {
+        void router.push(`/profile/${draftSection}/${blog.slug}`);
+      }
     } else {
       void router.push(`/blog/${blog.slug}`);
     }
@@ -308,7 +375,7 @@ export default function ProfileScreen() {
         <ProfileHeader
           profile={profile}
           counts={{
-            posts: published.length,
+            posts: posts.length,
             saved: savedRaw.length,
             drafts: drafts.length,
           }}
@@ -369,6 +436,9 @@ export default function ProfileScreen() {
                 busyId={busyBlogId}
                 onPressItem={handlePressItem}
                 onLongPressItem={handleLongPressItem}
+                onRemoveSaved={
+                  activeTab === "saved" ? handleRemoveSaved : undefined
+                }
                 onEmptyAction={emptyAction}
               />
             </Animated.View>

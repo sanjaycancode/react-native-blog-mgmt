@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import GridFeed, { GridSkeleton } from "@/components/home/GridFeed";
 import HomeHeader from "@/components/home/HomeHeader";
 import ListFeed, { ListSkeleton } from "@/components/home/ListFeed";
+import TopStoryHero from "@/components/home/TopStoryHero";
 import Button from "@/components/ThemedButton";
 import Card from "@/components/ThemedCard";
 
@@ -95,6 +96,21 @@ export default function HomeScreen() {
     selectedCategory === "All"
       ? blogs
       : blogs.filter((blog) => blog.category?.title === selectedCategory);
+  const topStory = blogs
+    .filter((blog) => {
+      const postedAt = new Date(blog.createdAt).getTime();
+      return (
+        Number.isFinite(postedAt) &&
+        postedAt >= Date.now() - 7 * 24 * 60 * 60 * 1000
+      );
+    })
+    .sort((a, b) => {
+      const viewsDifference = (b.views ?? 0) - (a.views ?? 0);
+      if (viewsDifference !== 0) return viewsDifference;
+      return (
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    })[0];
 
   return (
     <SafeAreaView
@@ -174,12 +190,14 @@ export default function HomeScreen() {
                 <Button
                   title="Start writing"
                   variant="filled"
+                  size="small"
                   onPress={() => void router.push("/blog/create")}
                   style={{ flex: 1 }}
                 />
                 <Button
                   title={isAdmin ? "Dashboard" : "Your profile"}
                   variant="outlined"
+                  size="small"
                   onPress={() =>
                     void router.push(isAdmin ? "/admin" : "/profile")
                   }
@@ -191,12 +209,14 @@ export default function HomeScreen() {
                 <Button
                   title="Browse blogs"
                   variant="filled"
+                  size="small"
                   onPress={() => void router.push("/blog")}
                   style={{ flex: 1 }}
                 />
                 <Button
                   title="Join us"
                   variant="outlined"
+                  size="small"
                   onPress={() => void router.push("/register")}
                   style={{ flex: 1 }}
                 />
@@ -399,6 +419,13 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+
+        {!isBlogsLoading && !blogsError && topStory ? (
+          <TopStoryHero
+            blog={topStory}
+            onPress={(blog) => void router.push(`/blog/${blog.slug}`)}
+          />
+        ) : null}
 
         {/* Bottom call to action: also depends on login state */}
         <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.lg }}>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import type { ImagePickerAsset } from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -213,33 +213,58 @@ export default function CreateBlogPage() {
 
   return (
     <ThemedSafeAreaView edges={["top", "left", "right"]}>
+      <View
+        style={[
+          styles.pageHeader,
+          {
+            borderBottomColor: colors.border,
+            marginHorizontal: spacing.md,
+            paddingBottom: spacing.sm,
+            paddingTop: spacing.sm,
+          },
+        ]}
+      >
+        <Pressable
+          onPress={handleCancel}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={10}
+          style={({ pressed }) => [
+            styles.backButton,
+            {
+              backgroundColor: colors.secondary,
+              opacity: pressed ? 0.65 : 1,
+            },
+          ]}
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.foreground} />
+        </Pressable>
+        <View style={styles.headerCopy}>
+          <ThemedText variant="caption" semantic="primary">
+            NEW POST
+          </ThemedText>
+          <ThemedText variant="heading4" style={{ marginTop: 2 }}>
+            Create a blog
+          </ThemedText>
+          <View
+            style={[
+              styles.headerIndicator,
+              { backgroundColor: colors.primary },
+            ]}
+          />
+        </View>
+      </View>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.scrollContent,
           {
             paddingHorizontal: spacing.md,
-            paddingVertical: spacing.xl,
+            paddingVertical: spacing.lg,
           },
         ]}
       >
-        <View style={[styles.pageHeader, { marginBottom: spacing.lg }]}>
-          <ThemedText variant="caption" semantic="primary">
-            WRITE
-          </ThemedText>
-          <ThemedText variant="heading2" style={{ marginTop: spacing.xs }}>
-            Create new blog
-          </ThemedText>
-          <ThemedText
-            variant="bodySmall"
-            semantic="muted"
-            style={{ marginTop: spacing.xs }}
-          >
-            Share your story with the community.
-          </ThemedText>
-        </View>
-
-        <ThemedCard style={{ padding: spacing.md }}>
+        <ThemedCard style={{ padding: spacing.md, borderRadius: radii.lg }}>
           <View style={{ gap: spacing.lg }}>
             {error ? (
               <View
@@ -443,7 +468,29 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  pageHeader: {},
+  pageHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerCopy: {
+    flex: 1,
+    position: "relative",
+  },
+  headerIndicator: {
+    width: 48,
+    height: 2,
+    borderRadius: 2,
+    marginTop: 5,
+  },
   centered: {
     alignItems: "center",
     flex: 1,
