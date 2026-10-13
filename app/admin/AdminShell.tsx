@@ -143,10 +143,10 @@ export function AdminShell({
           >
             <View style={[styles.drawerHeading, { paddingBottom: spacing.md }]}>
               <View>
-                <Text variant="titleLarge">Admin menu</Text>
+                <Text variant="titleLarge">Admin Menu</Text>
                 {userName ? (
                   <Text
-                    variant="bodySmall"
+                    variant="bodyMedium"
                     style={{ color: colors.mutedForeground }}
                   >
                     {userName}
@@ -177,47 +177,38 @@ export function AdminShell({
                   style={({ pressed }) => [
                     styles.navigationItem,
                     {
-                      borderRadius: radii.md,
-                      paddingHorizontal: spacing.md,
-                      paddingVertical: spacing.md,
+                      borderRadius: radii.sm,
+                      paddingHorizontal: spacing.sm,
+                      paddingVertical: spacing.sm,
                       backgroundColor:
                         pathname === item.href
-                          ? colors.secondary
+                          ? colors.muted
                           : pressed
                             ? colors.muted
-                        : item.available
-                          ? colors.secondary
-                          : "transparent",
-                      opacity: item.available ? 1 : 0.55,
+                        : colors.background
                     },
                   ]}
                 >
                   <Ionicons
                     name={item.icon}
                     size={20}
-                    color={item.available ? colors.primary : colors.mutedForeground}
+                    color={ colors.primary }
                   />
                   <Text
                     variant="bodyMedium"
                     style={[
                       styles.navigationLabel,
+                      
                       {
-                        color: item.available
-                          ? colors.foreground
-                          : colors.mutedForeground,
+                        fontSize:15,
+                        fontWeight:600,
+                        color:  colors.foreground
                       },
                     ]}
                   >
                     {item.label}
                   </Text>
-                  {!item.available ? (
-                    <Text
-                      variant="labelSmall"
-                      style={{ color: colors.mutedForeground }}
-                    >
-                      Soon
-                    </Text>
-                  ) : null}
+                  
                 </Pressable>
               ))}
             </View>

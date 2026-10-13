@@ -32,6 +32,7 @@ import type { Blog } from "@/types/blog";
 import type { Category } from "@/types/category";
 
 import { getErrorMessage } from "@/utils/errorMessage";
+import { Ionicons } from "@expo/vector-icons";
 
 const BLOG_LIMIT = 100;
 const STATUSES = ["published", "unpublished", "submitted", "rejected"] as const;
@@ -194,14 +195,11 @@ export default function AdminOverview() {
         showsVerticalScrollIndicator={false}
       >
         <View>
-          <Text variant="headlineSmall" style={{ color: colors.foreground }}>
-            Dashboard
-          </Text>
           <Text
-            variant="bodyMedium"
-            style={{ color: colors.mutedForeground, marginTop: spacing.xs }}
+            variant="headlineSmall"
+            style={{ color: colors.foreground, fontSize: 20, fontWeight: 600 }}
           >
-            Manage content and review activity across the community.
+            Dashboard
           </Text>
         </View>
 
@@ -250,15 +248,27 @@ export default function AdminOverview() {
             </View>
 
             <View style={{ gap: spacing.md }}>
-              <Text variant="titleLarge">Analytics</Text>
+              <Text
+                variant="titleLarge"
+                style={{ fontSize: 20, fontWeight: 600 }}
+              >
+                Analytics
+              </Text>
               <CategoryDonutChart data={blogsByCategory} />
               <StatusBarChart data={blogsByStatus} />
             </View>
 
             <View style={{ gap: spacing.md }}>
               <View style={[styles.sectionHeading, { gap: spacing.sm }]}>
-                <Text variant="titleLarge">New blogs to review</Text>
-                <Chip compact>{submittedBlogs.length} pending</Chip>
+                <Text
+                  variant="titleLarge"
+                  style={{ fontSize: 20, fontWeight: 600 }}
+                >
+                  New blogs to review
+                </Text>
+                <Chip mode="outlined" compact textStyle={{color:colors.foreground}}>
+                  {submittedBlogs.length} pending
+                </Chip>
               </View>
               {submittedBlogs.length === 0 ? (
                 <Card mode="outlined">
@@ -282,21 +292,97 @@ export default function AdminOverview() {
                         `/admin/blog/${encodeURIComponent(blog.slug)}` as Href,
                       )
                     }
+                    style={({ pressed }) => ({
+                      opacity: pressed ? 0.8 : 1,
+                    })}
                   >
-                    <Card mode="outlined">
-                      <Card.Content style={{ gap: spacing.sm }}>
-                        <Text variant="titleMedium">{blog.title}</Text>
-                        <Text
-                          variant="bodySmall"
-                          style={{ color: colors.mutedForeground }}
-                        >
-                          By {blog.author?.name ?? "Unknown author"}
-                        </Text>
+                    <Card
+                      mode="outlined"
+                      style={{
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                        borderRadius: radii.lg,
+                      }}
+                    >
+                      <Card.Content
+                        style={{ paddingVertical: spacing.md, gap: spacing.md }}
+                      >
+                        <View style={styles.reviewCardHeader}>
+                          <View
+                            style={[
+                              styles.reviewIcon,
+                              { backgroundColor: colors.secondary },
+                            ]}
+                          >
+                            <Ionicons
+                              name="document-text-outline"
+                              size={18}
+                              color={colors.primary}
+                            />
+                          </View>
+
+                          <View style={{ flex: 1, gap: 4 }}>
+                            <Text
+                              variant="titleMedium"
+                              style={{
+                                color: colors.foreground,
+                                fontSize:15,
+                                fontWeight: "600",
+                                
+                              }}
+                            >
+                              {blog.title}
+                            </Text>
+
+                            <View style={styles.reviewAuthor}>
+                              <Ionicons
+                                name="person-outline"
+                                size={14}
+                                color={colors.mutedForeground}
+                              />
+                              <Text
+                                variant="bodySmall"
+                                style={{
+                                  color: colors.mutedForeground,
+                                  flexShrink: 1,
+                                }}
+                                numberOfLines={1}
+                              >
+                                {blog.author?.name ?? "Unknown author"}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <Ionicons
+                            name="chevron-forward"
+                            size={19}
+                            color={colors.mutedForeground}
+                          />
+                        </View>
+
                         <View style={[styles.reviewMeta, { gap: spacing.sm }]}>
-                          <Chip compact>
+                          <Chip
+                            compact
+                            
+                            mode="outlined"
+                            textStyle={{ fontSize: 12 }}
+                            style={{ borderColor: colors.border }}
+                          >
                             {blog.category?.title ?? "Uncategorized"}
                           </Chip>
-                          <Chip compact>{blog.status}</Chip>
+
+                          <Chip
+                            compact
+                            mode="flat"
+                            textStyle={{
+                              fontSize: 12,
+                              color: colors.primary,
+                              fontWeight: "600",
+                            }}
+                            style={{ backgroundColor: colors.secondary }}
+                          >
+                            {blog.status}
+                          </Chip>
                         </View>
                       </Card.Content>
                     </Card>
@@ -316,17 +402,16 @@ function StatCard({ label, value }: { label: string; value: number }) {
 
   return (
     <Card
-      mode="outlined"
       style={[
         styles.statCard,
         { backgroundColor: colors.card, borderRadius: radii.md },
       ]}
     >
-      <Card.Content style={{ gap: spacing.xs }}>
-        <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
+      <Card.Content style={{ flexDirection: "row", alignItems: "center" }}>
+        <Text variant="bodySmall" style={{ flex: 1, color: colors.foreground }}>
           {label}
         </Text>
-        <Text variant="headlineSmall" style={{ color: colors.foreground }}>
+        <Text variant="bodyLarge" style={{ color: colors.foreground }}>
           {value}
         </Text>
       </Card.Content>
@@ -402,7 +487,7 @@ function CategoryDonutChart({ data }: { data: BarEntry[] }) {
               <View style={styles.donutCenter} pointerEvents="none">
                 <Text variant="headlineSmall">{total}</Text>
                 <Text
-                  variant="labelSmall"
+                  variant="labelMedium"
                   style={{ color: colors.mutedForeground }}
                 >
                   blogs
@@ -701,9 +786,30 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-  reviewMeta: {
-    alignItems: "center",
+
+  reviewCardHeader: {
     flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  reviewIcon: {
+    width: 35,
+    height: 35,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  reviewAuthor: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+
+  reviewMeta: {
+    flexDirection: "row",
+    alignItems: "center",
     flexWrap: "wrap",
   },
 });
