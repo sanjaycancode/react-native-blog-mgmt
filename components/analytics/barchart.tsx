@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
+
 import Svg, { Defs, Line, LinearGradient, Rect, Stop, Text as SvgText } from "react-native-svg";
-import { C } from "./theme";
+
 import { compact, niceMax, useProgress, useScrub } from "./chartutils";
+import { useAnalyticsColors } from "./useAnalayticsColors";
 
 const PAD = { l: 36, r: 8, t: 12, b: 26 };
 
@@ -16,6 +18,7 @@ interface VProps {
 
 /** Vertical bars with drag-to-inspect. No track or backdrop, just the bars. */
 export function BarChart({ data, labels, height = 190, animateKey, onScrub }: VProps) {
+  const C = useAnalyticsColors();
   const [w, setW] = useState(0);
   const n = data.length;
   const p = useProgress(animateKey, 900);
@@ -86,26 +89,26 @@ export function BarChart({ data, labels, height = 190, animateKey, onScrub }: VP
   );
 }
 
-const SHADES = [C.hot, C.red500, C.red600, C.red700, C.red800, C.red900, C.red900, C.red900];
-
 /** Ranked horizontal bars, used for tags. */
 export function HBarList({ items }: { items: { label: string; value: number }[] }) {
+  const C = useAnalyticsColors();
   const max = Math.max(1, ...items.map((i) => i.value));
   const p = useProgress(items.map((i) => i.label + i.value).join("|"), 800);
+  const shades = [C.hot, C.red500, C.red600, C.red700, C.red800, C.red900];
   return (
     <View style={{ gap: 16 }}>
       {items.map((it, i) => (
         <View key={it.label}>
-          <View style={h.head}>
-            <Text style={h.label} numberOfLines={1}>{it.label}</Text>
-            <Text style={h.value}>{it.value}</Text>
+          <View style={styles.head}>
+            <Text style={[styles.label, { color: C.text }]} numberOfLines={1}>{it.label}</Text>
+            <Text style={[styles.value, { color: C.sub }]}>{it.value}</Text>
           </View>
           <View
             style={{
               height: 5,
               borderRadius: 3,
               width: `${(it.value / max) * 100 * p}%`,
-              backgroundColor: SHADES[Math.min(i, SHADES.length - 1)],
+              backgroundColor: shades[Math.min(i, shades.length - 1)],
             }}
           />
         </View>
@@ -114,8 +117,8 @@ export function HBarList({ items }: { items: { label: string; value: number }[] 
   );
 }
 
-const h = StyleSheet.create({
+const styles = StyleSheet.create({
   head: { flexDirection: "row", justifyContent: "space-between", marginBottom: 7 },
-  label: { color: C.text, fontSize: 14, fontWeight: "500", flex: 1 },
-  value: { color: C.sub, fontSize: 13, fontWeight: "600" },
+  label: { fontSize: 14, fontWeight: "500", flex: 1 },
+  value: { fontSize: 13, fontWeight: "600" },
 });

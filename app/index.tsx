@@ -8,12 +8,14 @@ import {
   View,
 } from "react-native";
 
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import GridFeed, { GridSkeleton } from "@/components/home/GridFeed";
 import HomeHeader from "@/components/home/HomeHeader";
-import GridFeed, { GridSkeleton } from "@/components/profile/GridFeed";
+import ListFeed, { ListSkeleton } from "@/components/home/ListFeed";
 import Button from "@/components/ThemedButton";
 import Card from "@/components/ThemedCard";
 
@@ -42,6 +44,7 @@ export default function HomeScreen() {
     .split(" ")[0];
 
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [feedView, setFeedView] = useState<"grid" | "list">("grid");
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isBlogsLoading, setIsBlogsLoading] = useState(true);
@@ -266,28 +269,71 @@ export default function HomeScreen() {
           >
             Latest stories
           </Text>
-          <Pressable
-            onPress={() => void router.push("/blog")}
-            accessibilityRole="link"
-            hitSlop={8}
-            style={styles.linkRow}
-          >
-            <Text
-              style={{
-                color: colors.primary,
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.semibold,
-              }}
+          <View style={styles.sectionActions}>
+            <View
+              style={[
+                styles.viewToggle,
+                { backgroundColor: colors.secondary, borderColor: colors.border },
+              ]}
             >
-              View all
-            </Text>
-            <Ionicons name="arrow-forward" size={14} color={colors.primary} />
-          </Pressable>
+              {(["grid", "list"] as const).map((view) => {
+                const isSelected = feedView === view;
+                return (
+                  <Pressable
+                    key={view}
+                    onPress={() => setFeedView(view)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${view} view`}
+                    accessibilityState={{ selected: isSelected }}
+                    hitSlop={4}
+                    style={[
+                      styles.viewToggleButton,
+                      {
+                        backgroundColor: isSelected
+                          ? colors.card
+                          : "transparent",
+                        borderColor: isSelected
+                          ? colors.border
+                          : "transparent",
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={view === "grid" ? "grid-outline" : "list-outline"}
+                      size={17}
+                      color={
+                        isSelected
+                          ? colors.primary
+                          : colors.mutedForeground
+                      }
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Pressable
+              onPress={() => void router.push("/blog")}
+              accessibilityRole="link"
+              hitSlop={8}
+              style={styles.linkRow}
+            >
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.semibold,
+                }}
+              >
+                View all
+              </Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+            </Pressable>
+          </View>
         </View>
 
         <View style={{ marginTop: spacing.xs }}>
           {isBlogsLoading ? (
-            <GridSkeleton count={4} />
+            feedView === "grid" ? <GridSkeleton count={4} /> : <ListSkeleton count={4} />
           ) : blogsError ? (
             <View style={[styles.stateBox, { padding: spacing.xl }]}>
               <Ionicons
@@ -323,14 +369,23 @@ export default function HomeScreen() {
               />
             </View>
           ) : filteredBlogs.length > 0 ? (
-            <GridFeed
-              // Remount on category change so cards animate in again.
-              key={selectedCategory}
-              items={filteredBlogs}
-              type="posts"
-              showAuthor
-              onPressItem={(blog) => void router.push(`/blog/${blog.slug}`)}
-            />
+            feedView === "grid" ? (
+              <GridFeed
+                key={`${selectedCategory}-grid`}
+                items={filteredBlogs}
+                type="posts"
+                showAuthor
+                onPressItem={(blog) => void router.push(`/blog/${blog.slug}`)}
+              />
+            ) : (
+              <ListFeed
+                key={`${selectedCategory}-list`}
+                items={filteredBlogs}
+                type="posts"
+                showAuthor
+                onPressItem={(blog) => void router.push(`/blog/${blog.slug}`)}
+              />
+            )
           ) : (
             <View style={[styles.stateBox, { padding: spacing.xl }]}>
               <Text
@@ -417,7 +472,6 @@ export default function HomeScreen() {
           </Card>
         </View>
       </ScrollView>
-
     </SafeAreaView>
   );
 }
@@ -430,6 +484,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
+  },
+  sectionActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  viewToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 2,
+  },
+  viewToggleButton: {
+    width: 30,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 7,
   },
   linkRow: {
     flexDirection: "row",

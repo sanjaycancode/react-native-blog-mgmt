@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { LayoutChangeEvent, View } from "react-native";
+
 import Svg, {
   Circle,
   Defs,
@@ -9,7 +10,7 @@ import Svg, {
   Stop,
   Text as SvgText,
 } from "react-native-svg";
-import { C } from "./theme";
+
 import {
   compact,
   niceMax,
@@ -17,6 +18,7 @@ import {
   useProgress,
   useScrub,
 } from "./chartutils";
+import { useAnalyticsColors } from "./useAnalayticsColors";
 
 export interface LineSeries {
   data: number[];
@@ -43,6 +45,7 @@ export function LineChart({
   animateKey,
   onScrub,
 }: Props) {
+  const C = useAnalyticsColors();
   const [w, setW] = useState(0);
   const n = labels.length;
   const p = useProgress(animateKey, 1000);
@@ -73,7 +76,6 @@ export function LineChart({
           len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
         return { d: smoothPath(pts), len: len * 1.25 + 2, pts };
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [series, w, height, max, n],
   );
 

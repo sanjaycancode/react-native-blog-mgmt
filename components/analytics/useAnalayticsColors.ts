@@ -2,6 +2,8 @@ import { useMemo } from "react";
 
 import { useTheme } from "@/constants/theme";
 
+import { type Status,STATUS_COLORS } from "./theme";
+
 /** "#rrggbb" or "#rgb" + alpha (0 to 1). Other formats are returned unchanged. */
 function withAlpha(color: string, alpha: number): string {
   const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
@@ -32,27 +34,39 @@ export function useAnalyticsColors() {
   const { colors, isDark } = useTheme();
 
   return useMemo(
-    () => ({
-      isDark,
-      bg: colors.background,
-      text: colors.foreground,
-      sub: colors.mutedForeground,
-      mute: withAlpha(colors.mutedForeground, 0.7),
-      line: colors.border,
-      fill: colors.secondary, // skeletons and soft surfaces
-      card: colors.card,
-      hot: colors.primary,
-      onPrimary: colors.primaryForeground,
-      red100: colors.primaryForeground, // text on a solid primary fill
-      red200: colors.primary,
-      red300: withAlpha(colors.primary, 0.8),
-      red400: colors.primary,
-      red500: colors.primary,
-      red600: colors.primary,
-      red700: colors.primary,
-      red800: withAlpha(colors.primary, 0.5),
-      red900: colors.primary,
-    }),
+    () => {
+      const statusColors: Record<Status, string> = {
+        featured: STATUS_COLORS.featured,
+        published: STATUS_COLORS.published,
+        submitted: STATUS_COLORS.submitted,
+        draft: STATUS_COLORS.draft,
+        unpublished: STATUS_COLORS.unpublished,
+        rejected: STATUS_COLORS.rejected,
+      };
+
+      return {
+        isDark,
+        bg: colors.background,
+        text: colors.foreground,
+        sub: colors.mutedForeground,
+        mute: withAlpha(colors.mutedForeground, 0.7),
+        line: colors.border,
+        fill: colors.secondary,
+        card: colors.card,
+        hot: colors.primary,
+        onPrimary: colors.primaryForeground,
+        red100: colors.primaryForeground,
+        red200: colors.primary,
+        red300: withAlpha(colors.primary, 0.8),
+        red400: colors.primary,
+        red500: colors.primary,
+        red600: colors.primary,
+        red700: colors.primary,
+        red800: withAlpha(colors.primary, 0.5),
+        red900: colors.primary,
+        statusColors,
+      };
+    },
     [colors, isDark],
   );
 }

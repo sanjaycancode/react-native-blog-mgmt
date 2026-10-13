@@ -14,7 +14,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import GridFeed from "@/components/profile/GridFeed";
+import GridFeed from "@/components/home/GridFeed";
 import MinimalTabBar, {
   type ProfileTab,
 } from "@/components/profile/MinimalTabBar";
