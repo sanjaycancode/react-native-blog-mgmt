@@ -59,7 +59,7 @@ export function AdminShell({
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { colors, spacing, radii } = useTheme();
+  const { colors, spacing, radii, isDark,toggleTheme} = useTheme();
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   const closeDrawer = () => setDrawerVisible(false);
@@ -81,9 +81,25 @@ export function AdminShell({
           )}
           onPress={() => setDrawerVisible(true)}
         />
-        <Appbar.Content
+        <Appbar.Content titleStyle={{fontSize:16, fontWeight:700}}
           title={userName ? `Welcome, ${userName}` : "Administration"}
         />
+        <Pressable
+                onPress={toggleTheme}
+                accessibilityRole="button"
+                accessibilityLabel="Toggle theme"
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.iconBtn,
+                  { backgroundColor: colors.secondary, opacity: pressed ? 0.6 : 1 },
+                ]}
+              >
+                <Ionicons
+                  name={isDark ? "sunny-outline" : "moon-outline"}
+                  size={19}
+                  color={colors.foreground}
+                />
+              </Pressable>
         <Appbar.Action
           accessibilityLabel="Log out"
           icon={({ color, size }) => (
@@ -293,6 +309,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 16,
     paddingHorizontal: 12,
+  },
+    iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 
