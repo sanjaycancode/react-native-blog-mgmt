@@ -32,6 +32,16 @@ const COPY: Record<
     body: "Blogs you haven't published yet are kept here, just for you.",
     cta: "Start a draft",
   },
+  submitted: {
+    icon: "paper-plane-outline",
+    title: "No submitted blogs",
+    body: "Blogs submitted for review will appear here.",
+  },
+  rejected: {
+    icon: "close-circle-outline",
+    title: "No rejected blogs",
+    body: "Blogs rejected during review will appear here.",
+  },
 };
 
 type Props = {
