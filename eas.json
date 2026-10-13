@@ -7,34 +7,34 @@
     "base": {
       "node": "22.14.0"
     },
-    
     "development": {
       "extends": "base",
       "environment": "development",
       "channel": "development",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://example.com/api"
+        "EXPO_PUBLIC_API_BASE_URL": "https://blog-gxe2.onrender.com/api"
       }
     },
     "staging-preview": {
-  "extends": "base",
-  "distribution": "internal",
-  "environment": "staging",
-  "channel": "staging",
-  "android": {
-    "buildType": "apk"
-  },
-  "env": {
-    "EXPO_PUBLIC_API_BASE_URL": "https://staging.example.com/api"
-  }
-},
+      "extends": "base",
+      "distribution": "internal",
+      "environment": "staging",
+      "channel": "staging",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://blog-gxe2.onrender.com/api"
+      }
+    },
     "production": {
       "extends": "base",
       "environment": "production",
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.example.com/api"
+        "EXPO_PUBLIC_API_BASE_URL": "https://blog-gxe2.onrender.com/api"
       }
     }
   },

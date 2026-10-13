@@ -1,16 +1,18 @@
 {
   "expo": {
     "name": "NepalCanBlog",
+    "slug": "nepalcanblog",
     "icon": "./assets/images/logo.png",
-    "slug": "expo-react-native-boilerplate",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "expoboilerplate",
+    "scheme": "nepalcanblog",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.example.expoboilerplate",
-      "associatedDomains": ["applinks:og-ncc19.vercel.app"],
+      "bundleIdentifier": "com.nepalcan.blog",
+      "associatedDomains": [
+        "applinks:blog-ncc19.vercel.app"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -27,23 +29,22 @@
           "data": [
             {
               "scheme": "https",
-              "host": "og-ncc19.vercel.app",
+              "host": "blog-ncc19.vercel.app",
               "pathPrefix": "/profile"
             },
             {
               "scheme": "https",
-              "host": "og-ncc19.vercel.app",
+              "host": "blog-ncc19.vercel.app",
               "pathPrefix": "/reset-password"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
-      "package": "com.example.expoboilerplate",
-      "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA"
-      ]
+      "package": "com.nepalcan.blog"
     },
     "web": {
       "bundler": "metro",
@@ -73,16 +74,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "ca4341fe-c734-44c7-ab29-ef9887e0f451"
-      },
-      "API_URL": "http://localhost:5000/api"
+        "projectId": "7e18d7b1-6692-49a0-96f4-7bc809019a51"
+      }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/ca4341fe-c734-44c7-ab29-ef9887e0f451"
-    },
-    "owner": "amrtz"
+    "owner": "jyotinayak1s-team"
   }
 }

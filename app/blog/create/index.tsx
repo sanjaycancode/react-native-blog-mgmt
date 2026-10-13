@@ -11,7 +11,7 @@ import FormImagePicker from "@/components/forms/FormImagePicker";
 import FormSelect from "@/components/forms/FormSelect";
 import RichTextEditor from "@/components/forms/RichTextEditor";
 import { ThemedButton } from "@/components/ThemedButton";
-import  ThemedCard  from "@/components/ThemedCard";
+import ThemedCard from "@/components/ThemedCard";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
@@ -106,15 +106,14 @@ export default function CreateBlogPage() {
 
     if (!title.trim()) {
       nextErrors.title = "Title is required.";
-    } else if (title.trim().length > 120) {
-      nextErrors.title = "Title must be 120 characters or fewer.";
+    } else if (title.trim().length > 90) {
+      nextErrors.title = "Title must be 90 characters or fewer.";
     }
 
     if (!plainDescription) {
       nextErrors.description = "Description is required.";
     } else if (plainDescription.length < 20) {
-      nextErrors.description =
-        "Description should be at least 20 characters.";
+      nextErrors.description = "Description should be at least 20 characters.";
     }
 
     if (!category) {
@@ -148,14 +147,11 @@ export default function CreateBlogPage() {
       formData.append("author", session.user.id);
 
       if (image) {
-        formData.append(
-          "image",
-          {
-            uri: image.uri,
-            name: getSelectedImageName(image),
-            type: image.mimeType ?? "image/jpeg",
-          } as unknown as Blob,
-        );
+        formData.append("image", {
+          uri: image.uri,
+          name: getSelectedImageName(image),
+          type: image.mimeType ?? "image/jpeg",
+        } as unknown as Blob);
       }
 
       await blogApi.create(formData);
@@ -191,7 +187,9 @@ export default function CreateBlogPage() {
   if (!isAuthenticated) {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
-        <View style={[styles.centered, { padding: spacing.xl, gap: spacing.md }]}>
+        <View
+          style={[styles.centered, { padding: spacing.xl, gap: spacing.md }]}
+        >
           <Ionicons
             name="lock-closed-outline"
             size={38}
@@ -207,10 +205,7 @@ export default function CreateBlogPage() {
           >
             Sign in to create and manage your stories.
           </ThemedText>
-          <ThemedButton
-            title="Sign in"
-            onPress={() => router.push("/login")}
-          />
+          <ThemedButton title="Sign in" onPress={() => router.push("/login")} />
         </View>
       </ThemedSafeAreaView>
     );
@@ -353,7 +348,9 @@ export default function CreateBlogPage() {
                   accessibilityLabel="Blog category"
                   value={category}
                   placeholder={
-                    categoriesLoading ? "Loading categories..." : "Select a category"
+                    categoriesLoading
+                      ? "Loading categories..."
+                      : "Select a category"
                   }
                   disabled={categoriesLoading || submitting}
                   options={categories.map((item) => ({
@@ -395,7 +392,10 @@ export default function CreateBlogPage() {
               />
             </FormField>
 
-            <FormField label="Cover image" hint="Choose an image from your library.">
+            <FormField
+              label="Cover image"
+              hint="Choose an image from your library."
+            >
               <FormImagePicker
                 image={image}
                 onChange={(selectedImage) => {
