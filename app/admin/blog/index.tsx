@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -15,7 +14,6 @@ import {
   ActivityIndicator,
   Button,
   Card,
-  Chip,
   Dialog,
   Divider,
   Portal,
@@ -36,7 +34,6 @@ import { useToast } from "@/context/ToastContext";
 import type { AdminBlog } from "@/types/admin";
 
 import { getErrorMessage } from "@/utils/errorMessage";
-import { Blog } from "@/types";
 
 const PAGE_SIZE = 10;
 
@@ -49,6 +46,16 @@ const STATUS_FILTERS = [
   { label: "Rejected", value: "rejected" },
 ] as const;
 
+// Same palette as the web admin and feed card
+const STATUS_PALETTE: Record<string, { bg: string; fg: string }> = {
+  published: { bg: "#dcfce7", fg: "#15803d" },
+  featured: { bg: "#ede9fe", fg: "#6d28d9" },
+  submitted: { bg: "#fef9c3", fg: "#a16207" },
+  rejected: { bg: "#fee2e2", fg: "#b91c1c" },
+  unpublished: { bg: "#f3f4f6", fg: "#374151" },
+  draft: { bg: "#fef3c7", fg: "#b45309" },
+};
+
 type BlogFilters = {
   search: string;
   status: string;
@@ -58,6 +65,8 @@ type Confirmation = {
   action: "feature" | "unpublish";
   blog: AdminBlog;
 };
+
+
 
 export default function AdminBlogsPage() {
   const router = useRouter();
@@ -81,7 +90,6 @@ export default function AdminBlogsPage() {
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [statusMenuVisible, setStatusMenuVisible] = useState(false);
 
   const updateFilters = useCallback((update: Partial<BlogFilters>) => {
     setFilters((current) => ({ ...current, ...update }));
@@ -214,7 +222,7 @@ export default function AdminBlogsPage() {
 
   const selectedStatusLabel =
     STATUS_FILTERS.find((filter) => filter.value === filters.status)?.label ??
-    "All statuses";
+    "All";
 
   return (
     <AdminShell userName={user?.name} onLogout={() => void handleLogout()}>
@@ -238,152 +246,52 @@ export default function AdminBlogsPage() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ gap: spacing.xs }}>
-          <Text variant="headlineSmall" style={{ color: colors.foreground }}>
-            Blogs
-          </Text>
-          <Text variant="bodyMedium" style={{ color: colors.mutedForeground }}>
-            Search and manage all published and submitted blogs.
-          </Text>
+      
+        <View style={{ gap: spacing.md }}>
+          <SearchBox
+            initialValue={filters.search}
+            onSearch={(search) => updateFilters({ search })}
+            placeholder="Search by title, author, or tag"
+          />
+          <StatusTabs
+            value={filters.status}
+            onChange={(status) => updateFilters({ status })}
+          />
         </View>
 
-        <Card mode="outlined" style={{ backgroundColor: colors.card }}>
-          <Card.Content style={{ gap: spacing.md }}>
-            <SearchBox
-              initialValue={filters.search}
-              onSearch={(search) => updateFilters({ search })}
-              placeholder="Search by title, author, or tag"
-            />
-            <View style={{ gap: spacing.sm }}>
-              <Text variant="labelLarge" style={{ color: colors.foreground }}>
-                Status
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Status filter: ${selectedStatusLabel}`}
-                accessibilityState={{ expanded: statusMenuVisible }}
-                onPress={() => setStatusMenuVisible(true)}
-                style={[
-                  styles.statusDropdown,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    borderRadius: radii.md,
-                    minHeight: 40,
-                    paddingHorizontal: spacing.md,
-                  },
-                ]}
-              >
-                <Text variant="bodySmall" style={{ color: colors.foreground }}>
-                  {selectedStatusLabel}
-                </Text>
-                <Ionicons
-                  name={statusMenuVisible ? "chevron-up" : "chevron-down"}
-                  size={18}
-                  color={colors.mutedForeground}
-                />
-              </Pressable>
-            </View>
-          </Card.Content>
-        </Card>
-
-        <Modal
-          animationType="fade"
-          transparent
-          visible={statusMenuVisible}
-          onRequestClose={() => setStatusMenuVisible(false)}
-        >
-          <View style={styles.statusModal}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close status filter"
-              onPress={() => setStatusMenuVisible(false)}
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.foreground, opacity: 0.35 },
-              ]}
-            />
-            <View
-              style={[
-                styles.statusMenu,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  borderRadius: radii.lg,
-                  maxHeight: "70%",
-                  padding: spacing.md,
-                },
-              ]}
-            >
-              <Text
-                variant="titleMedium"
-                style={[styles.statusMenuTitle, { color: colors.foreground }]}
-              >
-                Choose a status
-              </Text>
-              <ScrollView>
-                {STATUS_FILTERS.map((filter) => {
-                  const selected = filters.status === filter.value;
-                  return (
-                    <Pressable
-                      key={filter.value || "all"}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      onPress={() => {
-                        setStatusMenuVisible(false);
-                        updateFilters({ status: filter.value });
-                      }}
-                      style={[
-                        styles.statusOption,
-                        { paddingVertical: spacing.md },
-                      ]}
-                    >
-                      <Text
-                        variant="bodySmall"
-                        style={{
-                          color: selected ? colors.primary : colors.foreground,
-                          fontWeight: selected
-                            ? typography.weights.semibold
-                            : typography.weights.regular,
-                        }}
-                      >
-                        {filter.label}
-                      </Text>
-                      {selected ? (
-                        <Ionicons
-                          name="checkmark"
-                          size={18}
-                          color={colors.primary}
-                        />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-
-        <View style={[styles.resultHeading, { gap: spacing.sm }]}>
-          <Text variant="titleMedium" style={{ color: colors.foreground }}>
-            All blogs
+        <View style={styles.resultHeading}>
+          <Text variant="titleSmall" style={{ color: colors.foreground }}>
+            {selectedStatusLabel} blogs
           </Text>
           <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
-            {totalBlogs} total
+            {totalBlogs} {totalBlogs === 1 ? "result" : "results"}
           </Text>
         </View>
 
         {error ? (
           <Card
             mode="outlined"
-            style={{ borderColor: colors.primary, borderRadius: radii.md }}
+            style={{
+              backgroundColor: colors.card,
+              borderColor: colors.primary,
+              borderRadius: radii.md,
+            }}
           >
-            <Card.Content style={{ gap: spacing.sm }}>
-              <Text variant="bodyMedium" style={{ color: colors.primary }}>
+            <Card.Content style={{ gap: spacing.sm, alignItems: "center" }}>
+              <Ionicons
+                name="alert-circle-outline"
+                size={28}
+                color={colors.primary}
+              />
+              <Text
+                variant="bodyMedium"
+                style={{ color: colors.primary, textAlign: "center" }}
+              >
                 Unable to load blogs: {error}
               </Text>
               <Button
                 mode="outlined"
+                icon="refresh"
                 onPress={() => {
                   setPage(1);
                   setReloadKey((current) => current + 1);
@@ -396,23 +304,39 @@ export default function AdminBlogsPage() {
         ) : null}
 
         {loading ? (
-          <View style={[styles.loading, { gap: spacing.md }]}>
-            <ActivityIndicator color={colors.primary} />
-            <Text
-              variant="bodyMedium"
-              style={{ color: colors.mutedForeground }}
-            >
-              Loading blogs...
-            </Text>
+          <View style={{ gap: spacing.md }}>
+            <BlogCardSkeleton />
+            <BlogCardSkeleton />
+            <BlogCardSkeleton />
           </View>
         ) : blogs.length === 0 && !error ? (
-          <Card mode="outlined" style={{ backgroundColor: colors.card }}>
-            <Card.Content style={{ alignItems: "center", gap: spacing.sm }}>
-              <Ionicons
-                name="documents-outline"
-                size={32}
-                color={colors.mutedForeground}
-              />
+          <Card
+            mode="outlined"
+            style={{
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderRadius: radii.md,
+            }}
+          >
+            <Card.Content
+              style={{
+                alignItems: "center",
+                gap: spacing.sm,
+                paddingVertical: spacing.xl,
+              }}
+            >
+              <View
+                style={[
+                  styles.emptyIcon,
+                  { backgroundColor: colors.muted, borderRadius: radii.full },
+                ]}
+              >
+                <Ionicons
+                  name="documents-outline"
+                  size={28}
+                  color={colors.mutedForeground}
+                />
+              </View>
               <Text variant="titleMedium" style={{ color: colors.foreground }}>
                 No blogs found
               </Text>
@@ -420,8 +344,17 @@ export default function AdminBlogsPage() {
                 variant="bodySmall"
                 style={{ color: colors.mutedForeground, textAlign: "center" }}
               >
-                Try changing your search terms or selected status.
+                Try a different search term or status.
               </Text>
+              {filters.search || filters.status ? (
+                <Button
+                  mode="outlined"
+                  compact
+                  onPress={() => updateFilters({ search: "", status: "" })}
+                >
+                  Clear filters
+                </Button>
+              ) : null}
             </Card.Content>
           </Card>
         ) : (
@@ -431,7 +364,7 @@ export default function AdminBlogsPage() {
                 key={blog._id}
                 blog={blog}
                 onOpen={() =>
-                 void router.push(`/admin/blog/${(blog.slug)}` as Href)
+                  void router.push(`/admin/blog/${blog.slug}` as Href)
                 }
                 onFeature={() => setConfirmation({ action: "feature", blog })}
                 onUnpublish={() =>
@@ -441,21 +374,27 @@ export default function AdminBlogsPage() {
             ))}
           </View>
         )}
+
         {!loading && totalPages > 1 ? (
-          <View style={[styles.pagination, { gap: spacing.md }]}>
+          <View style={[styles.pagination, { gap: spacing.sm }]}>
             <Button
               mode="outlined"
+              compact
               onPress={() => handlePageChange(page - 1)}
               disabled={page <= 1}
-              icon="chevron-left"
+              icon={({ size, color }) => (
+                <Ionicons name="chevron-back" size={size} color={color} />
+              )}
             >
-              Previous
+              Prev
             </Button>
             <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
               Page {page} of {totalPages}
             </Text>
             <Button
               mode="outlined"
+              compact
+              contentStyle={styles.nextButtonContent}
               onPress={() => handlePageChange(page + 1)}
               disabled={page >= totalPages}
               icon={({ size, color }) => (
@@ -478,11 +417,20 @@ export default function AdminBlogsPage() {
               ? "Feature blog"
               : "Unpublish blog"}
           </Dialog.Title>
-          <Dialog.Content>
+          <Dialog.Content style={{ gap: spacing.sm }}>
+            {confirmation ? (
+              <Text
+                variant="titleSmall"
+                numberOfLines={2}
+                style={{ color: colors.foreground }}
+              >
+                {confirmation.blog.title}
+              </Text>
+            ) : null}
             <Text variant="bodyMedium">
               {confirmation?.action === "feature"
                 ? "Feature this blog on the homepage? It will replace the current featured blog."
-                : "Are you sure you want to unpublish this blog?"}
+                : "Are you sure you want to unpublish this blog? It will no longer be visible to the public."}
             </Text>
           </Dialog.Content>
           <Dialog.Actions>
@@ -511,6 +459,57 @@ export default function AdminBlogsPage() {
   );
 }
 
+function StatusTabs({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (status: string) => void;
+}) {
+  const { colors, spacing, radii, typography } = useTheme();
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.md }}
+    >
+      {STATUS_FILTERS.map((filter) => {
+        const selected = value === filter.value;
+        return (
+          <Pressable
+            key={filter.value || "all"}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            onPress={() => onChange(filter.value)}
+            style={[
+              styles.tab,
+              {
+                backgroundColor: selected ? colors.primary : colors.card,
+                borderColor: selected ? colors.primary : colors.border,
+                borderRadius: radii.full,
+                paddingHorizontal: spacing.md,
+              },
+            ]}
+          >
+            <Text
+              variant="labelSmall"
+              style={{
+                color: selected ? colors.primaryForeground : colors.foreground,
+                fontWeight: selected
+                  ? typography.weights.semibold
+                  : typography.weights.regular,
+              }}
+            >
+              {filter.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 function AdminBlogCard({
   blog,
   onOpen,
@@ -522,17 +521,20 @@ function AdminBlogCard({
   onFeature: () => void;
   onUnpublish: () => void;
 }) {
-  const { colors, spacing, radii } = useTheme();
-  const statusColor =
-    blog.status === "published" || blog.status === "featured"
-      ? colors.primary
-      : blog.status === "submitted"
-        ? colors.accent
-        : colors.mutedForeground;
+  const { colors, spacing, radii, typography } = useTheme();
+  const status = STATUS_PALETTE[blog.status] ?? {
+    bg: colors.badgeBg,
+    fg: colors.badgeText,
+  };
   const createdDate = new Date(blog.createdAt);
   const dateLabel = Number.isNaN(createdDate.getTime())
     ? "Date unavailable"
-    : createdDate.toLocaleDateString();
+    : createdDate.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+  const canModerate = blog.status === "published";
 
   return (
     <Card
@@ -540,92 +542,149 @@ function AdminBlogCard({
       style={{
         backgroundColor: colors.card,
         borderColor: colors.border,
-        borderRadius: radii.md,
+        borderRadius: radii.lg,
+        overflow: "hidden",
       }}
     >
-      <Card.Content style={{ gap: spacing.sm }}>
-        <View style={[styles.cardHeading, { gap: spacing.sm }]}>
-          <Text
-            variant="titleMedium"
-            onPress={onOpen}
-            style={[styles.blogTitle, { color: colors.foreground }]}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${blog.title}`}
+        onPress={onOpen}
+        style={({ pressed }) => [
+          { padding: spacing.md, gap: spacing.sm, opacity: pressed ? 0.85 : 1 },
+        ]}
+      >
+        <View style={styles.badgeRow}>
+          <View
+            style={[
+              styles.pill,
+              {
+                backgroundColor: status.bg,
+                borderRadius: radii.full,
+                paddingHorizontal: spacing.sm,
+              },
+            ]}
           >
-            {blog.title}
-          </Text>
-          <Chip
-            compact
-            style={{
-              backgroundColor: colors.muted,
-              borderColor: statusColor,
-              borderWidth: 1,
-            }}
-            textStyle={{ color: statusColor }}
-          >
-            {blog.status}
-          </Chip>
-        </View>
-
-        <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
-          By {blog.author?.name ?? "Unknown author"} · {dateLabel}
-        </Text>
-        <Text variant="bodySmall" style={{ color: colors.mutedForeground }}>
-          {blog.category?.title ?? "Uncategorized"}
-        </Text>
-
-        {blog.tags?.length ? (
-          <View style={[styles.tags, { gap: spacing.xs }]}>
-            {blog.tags.slice(0, 4).map((tag) => (
-              <Chip key={tag} compact>
-                {tag}
-              </Chip>
-            ))}
-            {blog.tags.length > 4 ? (
-              <Text
-                variant="labelSmall"
-                style={{ alignSelf: "center", color: colors.mutedForeground }}
-              >
-                +{blog.tags.length - 4}
-              </Text>
-            ) : null}
+            <Text
+              variant="labelSmall"
+              style={{
+                color: status.fg,
+                fontWeight: typography.weights.semibold,
+                textTransform: "capitalize",
+              }}
+            >
+              {blog.status}
+            </Text>
           </View>
-        ) : null}
-
-        <Divider />
-        <View style={[styles.actions, { gap: spacing.sm }]}>
-          <Button
-            mode="text"
-            compact
-            onPress={onOpen}
-            icon="open-in-new"
-            style={styles.actionButton}
-          >
-            View
-          </Button>
-          <View style={styles.actionSpacer} />
-          <Button
-            mode="outlined"
-            compact
-            onPress={onFeature}
-            disabled={blog.status !== "published"}
-            icon="star-outline"
-            style={styles.actionButton}
-          >
-            Feature
-          </Button>
-          <Button
-            mode="outlined"
-            compact
-            onPress={onUnpublish}
-            disabled={blog.status !== "published"}
-            textColor={colors.primary}
-            icon="eye-off-outline"
-            style={styles.actionButton}
-          >
-            Unpublish
-          </Button>
+          <Text variant="labelSmall" style={{ color: colors.mutedForeground }}>
+            {dateLabel}
+          </Text>
         </View>
-      </Card.Content>
+
+        <Text
+          variant="titleMedium"
+          numberOfLines={2}
+          style={{
+            color: colors.foreground,
+            fontWeight: typography.weights.semibold,
+          }}
+        >
+          {blog.title}
+        </Text>
+
+        <View style={styles.metaRow}>
+          <Ionicons
+            name="person-outline"
+            size={13}
+            color={colors.mutedForeground}
+          />
+          <Text
+            variant="bodySmall"
+            numberOfLines={1}
+            style={[styles.metaText, { color: colors.mutedForeground }]}
+          >
+            {blog.author?.name ?? "Unknown author"}
+            {"  ·  "}
+            {blog.category?.title ?? "Uncategorized"}
+          </Text>
+        </View>
+      </Pressable>
+
+      <Divider />
+
+      <View
+        style={[
+          styles.actions,
+          {
+            paddingHorizontal: spacing.sm,
+            paddingVertical: spacing.sm,
+            gap: spacing.xs,
+          },
+        ]}
+      >
+        <Button mode="text" compact onPress={onOpen} icon="open-in-new">
+          View
+        </Button>
+        <View style={styles.actionSpacer} />
+        <Button
+          mode="text"
+          compact
+          onPress={onFeature}
+          disabled={!canModerate}
+          icon="star-outline"
+        >
+          Feature
+        </Button>
+        <Button
+          mode="text"
+          compact
+          onPress={onUnpublish}
+          disabled={!canModerate}
+          textColor={canModerate ? colors.primary : undefined}
+          icon="eye-off-outline"
+        >
+          Unpublish
+        </Button>
+      </View>
     </Card>
+  );
+}
+
+function BlogCardSkeleton() {
+  const { colors, spacing, radii } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.skeleton,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          borderRadius: radii.lg,
+          padding: spacing.md,
+          gap: spacing.sm,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.skeletonLine,
+          { width: "30%", backgroundColor: colors.muted },
+        ]}
+      />
+      <View
+        style={[
+          styles.skeletonLine,
+          { width: "90%", height: 16, backgroundColor: colors.muted },
+        ]}
+      />
+      <View
+        style={[
+          styles.skeletonLine,
+          { width: "55%", backgroundColor: colors.muted },
+        ]}
+      />
+    </View>
   );
 }
 
@@ -638,67 +697,71 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
   },
-  resultHeading: {
-    alignItems: "baseline",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  statusDropdown: {
+ 
+  tab: {
+    height: 30,
+    borderWidth: 1,
     alignItems: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  statusModal: {
-    alignItems: "center",
-    flex: 1,
     justifyContent: "center",
-    padding: 24,
   },
-  statusMenu: {
-    borderWidth: StyleSheet.hairlineWidth,
-    width: "100%",
-  },
-  statusMenuTitle: {
-    marginBottom: 8,
-  },
-  statusOption: {
-    alignItems: "center",
+  resultHeading: {
     flexDirection: "row",
+    alignItems: "baseline",
     justifyContent: "space-between",
+  },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+ 
+  
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  pill: {
+    alignSelf: "flex-start",
+    paddingVertical: 3,
+    justifyContent: "center",
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  metaText: {
+    flex: 1,
+  },
+  tags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  actionSpacer: {
+    flex: 1,
   },
   pagination: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  loading: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 32,
+  nextButtonContent: {
+    flexDirection: "row-reverse",
   },
-  cardHeading: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  blogTitle: {
-    flex: 1,
-  },
-  tags: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  actions: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  actionButton: {
-    marginVertical: 0,
-  },
-  actionSpacer: {
-    flex: 1,
+ skeleton: {
+  borderWidth: StyleSheet.hairlineWidth,
+},
+  skeletonLine: {
+    height: 12,
+    borderRadius: 6,
   },
 });
