@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextStyle,
@@ -19,7 +18,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
 import { imgSrc } from "@/utils/getImgSrc";
 
-import { C, STATUS_COLORS, STATUS_LABELS } from "@/components/analytics/theme";
+import { STATUS_COLORS, STATUS_LABELS } from "@/components/analytics/theme";
+import {
+  useAnalyticsColors,
+  type AnalyticsPalette,
+} from "@/components/analytics/useAnalayticsColors";
 import {
   RANGE_LABEL,
   useAnalyticsData,
@@ -36,6 +39,13 @@ const METRICS: { key: Metric; label: string }[] = [
   { key: "likes", label: "Likes" },
   { key: "posts", label: "Posts" },
 ];
+
+/** Palette + styles that follow the active theme. */
+function useA() {
+  const C = useAnalyticsColors();
+  const s = useMemo(() => makeStyles(C), [C]);
+  return { C, s };
+}
 
 // ── Small building blocks ──────────────────────────────────────────────────
 function AnimatedNumber({
@@ -93,6 +103,7 @@ function Skeleton({
   w?: number | `${number}%`;
   r?: number;
 }) {
+  const { C } = useA();
   const o = useRef(new Animated.Value(0.35)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -118,7 +129,7 @@ function Skeleton({
         height: h,
         width: w,
         borderRadius: r,
-        backgroundColor: C.line,
+        backgroundColor: C.fill,
         opacity: o,
       }}
     />
@@ -136,6 +147,7 @@ function Section({
   right?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const { s } = useA();
   return (
     <View style={s.section}>
       <View style={s.sectionHead}>
@@ -151,6 +163,7 @@ function Section({
 }
 
 function DeltaPill({ d }: { d: Delta }) {
+  const { C, s } = useA();
   if (d.pct === null) {
     if (d.current === 0) return null;
     return <Text style={[s.delta, { color: C.red300 }]}>New this period</Text>;
@@ -177,6 +190,7 @@ function RangePills({
   value: Range;
   onChange: (r: Range) => void;
 }) {
+  const { s } = useA();
   return (
     <View style={s.pills}>
       {(["7D", "30D", "90D"] as Range[]).map((r) => (
@@ -205,6 +219,7 @@ function Stat({
   note?: string;
   last?: boolean;
 }) {
+  const { s } = useA();
   return (
     <View style={[s.stat, !last && s.statRule]}>
       <Text style={s.statLabel}>{label}</Text>
@@ -218,7 +233,8 @@ function Stat({
 export default function AnalyticsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { C, s } = useA();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const d = useAnalyticsData();
 
   const [metric, setMetric] = useState<Metric>("views");
@@ -257,7 +273,7 @@ export default function AnalyticsScreen() {
     [d.statusCounts],
   );
 
-  const name = d.profile?.user?.name ?? user?.name ?? "Your insights";
+  const name = d.profile?.user?.name ?? "Your insights";
   const avatar = d.profile?.avatar ? imgSrc(d.profile.avatar, "profile") : null;
   const maxViews = d.topPosts[0]?.views ?? 0;
   const firstLoad = d.isLoading && d.blogs.length === 0;
@@ -266,11 +282,11 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={s.screen}>
-      <StatusBar barStyle="light-content" />
+      {/* Status bar style comes from the root layout, which already follows the theme. */}
       <ScrollView
         contentContainerStyle={{
           paddingTop: insets.top + 8,
-          paddingBottom: insets.bottom + 48,
+          paddingBottom: 48,
         }}
         showsVerticalScrollIndicator={false}
         scrollEnabled={scrub === null && barScrub === null}
@@ -337,7 +353,7 @@ export default function AnalyticsScreen() {
             </Text>
             <Pressable
               style={s.cta}
-              onPress={() => router.push("/blogs/create")}
+              onPress={() => router.push("/blog/create")}
             >
               <Text style={s.ctaText}>Write a post</Text>
             </Pressable>
@@ -503,7 +519,7 @@ export default function AnalyticsScreen() {
                   return (
                     <Pressable
                       key={p._id}
-                      onPress={() => router.push(`/blogs/${p.slug}`)}
+                      onPress={() => router.push(`/blog/${p.slug}`)}
                       style={s.post}
                     >
                       <Text style={[s.rank, i === 0 && { color: C.hot }]}>
@@ -561,200 +577,226 @@ export default function AnalyticsScreen() {
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: C.bg },
+// ── Styles (built from the active palette) ─────────────────────────────────
+const makeStyles = (C: AnalyticsPalette) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: C.bg },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  back: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: {
-    color: C.text,
-    fontSize: 28,
-    fontWeight: "800",
-    letterSpacing: -0.8,
-  },
-  whoRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 },
-  who: { color: C.sub, fontSize: 13 },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: C.red700,
-  },
-  avatarFallback: {
-    backgroundColor: C.red900,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarLetter: { color: C.red100, fontWeight: "800", fontSize: 16 },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      gap: 10,
+    },
+    back: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    title: {
+      color: C.text,
+      fontSize: 28,
+      fontWeight: "800",
+      letterSpacing: -0.8,
+    },
+    whoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      marginTop: 1,
+    },
+    who: { color: C.sub, fontSize: 13 },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: C.red700,
+    },
+    avatarFallback: {
+      backgroundColor: C.red900,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarLetter: { color: C.red100, fontWeight: "800", fontSize: 16 },
 
-  error: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-    marginHorizontal: 20,
-    marginTop: 20,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.red800,
-  },
-  errorText: { color: C.red200, fontSize: 13, flex: 1 },
+    error: {
+      flexDirection: "row",
+      gap: 8,
+      alignItems: "center",
+      marginHorizontal: 20,
+      marginTop: 20,
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: C.red800,
+    },
+    errorText: { color: C.red200, fontSize: 13, flex: 1 },
 
-  empty: {
-    alignItems: "center",
-    paddingHorizontal: 40,
-    paddingTop: 90,
-    gap: 10,
-  },
-  emptyTitle: { color: C.text, fontSize: 20, fontWeight: "700", marginTop: 6 },
-  emptyBody: {
-    color: C.sub,
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  cta: {
-    marginTop: 14,
-    backgroundColor: C.red600,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 99,
-  },
-  ctaText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    empty: {
+      alignItems: "center",
+      paddingHorizontal: 40,
+      paddingTop: 90,
+      gap: 10,
+    },
+    emptyTitle: {
+      color: C.text,
+      fontSize: 20,
+      fontWeight: "700",
+      marginTop: 6,
+    },
+    emptyBody: {
+      color: C.sub,
+      fontSize: 14,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    cta: {
+      marginTop: 14,
+      backgroundColor: C.red600,
+      paddingHorizontal: 22,
+      paddingVertical: 12,
+      borderRadius: 99,
+    },
+    ctaText: { color: C.onPrimary, fontWeight: "700", fontSize: 15 },
 
-  hero: { marginTop: 22 },
-  heroTop: { paddingHorizontal: 20, alignItems: "flex-start" },
-  pills: {
-    flexDirection: "row",
-    borderRadius: 99,
-    borderWidth: 1,
-    borderColor: C.line,
-    padding: 3,
-  },
-  pill: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 99 },
-  pillOn: { backgroundColor: C.red600 },
-  pillText: { color: C.sub, fontSize: 12.5, fontWeight: "700" },
-  pillTextOn: { color: "#fff" },
+    hero: { marginTop: 22 },
+    heroTop: { paddingHorizontal: 20, alignItems: "flex-start" },
+    pills: {
+      flexDirection: "row",
+      borderRadius: 99,
+      borderWidth: 1,
+      borderColor: C.line,
+      padding: 3,
+    },
+    pill: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 99 },
+    pillOn: { backgroundColor: C.red600 },
+    pillText: { color: C.sub, fontSize: 12.5, fontWeight: "700" },
+    pillTextOn: { color: C.onPrimary },
 
-  tabs: { flexDirection: "row", gap: 22, paddingHorizontal: 20, marginTop: 22 },
-  tab: { paddingTop: 2 },
-  tabText: { color: C.mute, fontSize: 16, fontWeight: "700", paddingBottom: 6 },
-  tabTextOn: { color: C.text },
-  tabBar: { height: 2.5, borderRadius: 2, backgroundColor: "transparent" },
-  tabBarOn: { backgroundColor: C.hot },
+    tabs: {
+      flexDirection: "row",
+      gap: 22,
+      paddingHorizontal: 20,
+      marginTop: 22,
+    },
+    tab: { paddingTop: 2 },
+    tabText: {
+      color: C.mute,
+      fontSize: 16,
+      fontWeight: "700",
+      paddingBottom: 6,
+    },
+    tabTextOn: { color: C.text },
+    tabBar: { height: 2.5, borderRadius: 2, backgroundColor: "transparent" },
+    tabBarOn: { backgroundColor: C.hot },
 
-  heroNumberBlock: {
-    paddingHorizontal: 20,
-    marginTop: 18,
-    marginBottom: 6,
-    minHeight: 104,
-  },
-  heroNumber: {
-    color: C.text,
-    fontSize: 56,
-    fontWeight: "800",
-    letterSpacing: -2.5,
-    lineHeight: 60,
-  },
-  heroCaption: { color: C.sub, fontSize: 13.5, marginTop: 2 },
-  deltaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    marginTop: 6,
-  },
-  delta: { fontSize: 13, fontWeight: "700", marginTop: 0 },
+    heroNumberBlock: {
+      paddingHorizontal: 20,
+      marginTop: 18,
+      marginBottom: 6,
+      minHeight: 104,
+    },
+    heroNumber: {
+      color: C.text,
+      fontSize: 56,
+      fontWeight: "800",
+      letterSpacing: -2.5,
+      lineHeight: 60,
+    },
+    heroCaption: { color: C.sub, fontSize: 13.5, marginTop: 2 },
+    deltaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      marginTop: 6,
+    },
+    delta: { fontSize: 13, fontWeight: "700", marginTop: 0 },
 
-  keyRow: {
-    flexDirection: "row",
-    gap: 18,
-    paddingHorizontal: 20,
-    marginTop: 6,
-  },
-  keyItem: { flexDirection: "row", alignItems: "center", gap: 7 },
-  keyLine: { width: 16, height: 2.5, borderRadius: 2 },
-  keyText: { color: C.sub, fontSize: 12 },
-  footnote: {
-    color: C.mute,
-    fontSize: 11.5,
-    paddingHorizontal: 20,
-    marginTop: 10,
-    lineHeight: 16,
-  },
+    keyRow: {
+      flexDirection: "row",
+      gap: 18,
+      paddingHorizontal: 20,
+      marginTop: 6,
+    },
+    keyItem: { flexDirection: "row", alignItems: "center", gap: 7 },
+    keyLine: { width: 16, height: 2.5, borderRadius: 2 },
+    keyText: { color: C.sub, fontSize: 12 },
+    footnote: {
+      color: C.mute,
+      fontSize: 11.5,
+      paddingHorizontal: 20,
+      marginTop: 10,
+      lineHeight: 16,
+    },
 
-  section: { marginTop: 44, paddingHorizontal: 20 },
-  sectionHead: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginBottom: 18,
-  },
-  sectionTitle: {
-    color: C.text,
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: -0.4,
-  },
-  sectionHint: { color: C.sub, fontSize: 13, marginTop: 2 },
-  readValue: {
-    color: C.text,
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: -0.6,
-  },
-  readLabel: { color: C.sub, fontSize: 12 },
+    section: { marginTop: 44, paddingHorizontal: 20 },
+    sectionHead: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      marginBottom: 18,
+    },
+    sectionTitle: {
+      color: C.text,
+      fontSize: 20,
+      fontWeight: "800",
+      letterSpacing: -0.4,
+    },
+    sectionHint: { color: C.sub, fontSize: 13, marginTop: 2 },
+    readValue: {
+      color: C.text,
+      fontSize: 22,
+      fontWeight: "800",
+      letterSpacing: -0.6,
+    },
+    readLabel: { color: C.sub, fontSize: 12 },
 
-  statGrid: { flexDirection: "row", flexWrap: "wrap" },
-  stat: { width: "50%", paddingVertical: 18, paddingRight: 12 },
-  statRule: {},
-  statLabel: { color: C.sub, fontSize: 13, marginBottom: 4 },
-  statValue: {
-    color: C.text,
-    fontSize: 32,
-    fontWeight: "800",
-    letterSpacing: -1.2,
-  },
-  statNote: { color: C.red300, fontSize: 12.5, marginTop: 3 },
+    statGrid: { flexDirection: "row", flexWrap: "wrap" },
+    stat: { width: "50%", paddingVertical: 18, paddingRight: 12 },
+    statRule: {},
+    statLabel: { color: C.sub, fontSize: 13, marginBottom: 4 },
+    statValue: {
+      color: C.text,
+      fontSize: 32,
+      fontWeight: "800",
+      letterSpacing: -1.2,
+    },
+    statNote: { color: C.red300, fontSize: 12.5, marginTop: 3 },
 
-  post: { flexDirection: "row", gap: 14 },
-  rank: {
-    color: C.mute,
-    fontSize: 22,
-    fontWeight: "800",
-    width: 22,
-    letterSpacing: -0.5,
-  },
-  postTitle: { color: C.text, fontSize: 15, fontWeight: "600", lineHeight: 21 },
-  postMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 6,
-  },
-  metaText: { color: C.sub, fontSize: 12.5, fontWeight: "600" },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginLeft: 12,
-    marginRight: 1,
-  },
-  postBar: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: C.red500,
-    marginTop: 10,
-  },
-});
+    post: { flexDirection: "row", gap: 14 },
+    rank: {
+      color: C.mute,
+      fontSize: 22,
+      fontWeight: "800",
+      width: 22,
+      letterSpacing: -0.5,
+    },
+    postTitle: {
+      color: C.text,
+      fontSize: 15,
+      fontWeight: "600",
+      lineHeight: 21,
+    },
+    postMeta: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      marginTop: 6,
+    },
+    metaText: { color: C.sub, fontSize: 12.5, fontWeight: "600" },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      marginLeft: 12,
+      marginRight: 1,
+    },
+    postBar: {
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: C.red500,
+      marginTop: 10,
+    },
+  });

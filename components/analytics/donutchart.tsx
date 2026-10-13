@@ -101,7 +101,7 @@ export function DonutChart({
 const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 20 },
   center: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },
