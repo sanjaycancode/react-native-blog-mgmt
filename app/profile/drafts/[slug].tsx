@@ -9,20 +9,26 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { blogApi } from "@/api/services/blog";
 
 import { useAuth } from "@/context/AuthContext";
-import { blogApi } from "@/api/services/blog";
+
 import { type Blog } from "@/types";
+
 import { imgSrc } from "@/utils/getImgSrc";
+
 import { T } from "./appTheme"; // move appTheme.ts here (or fix this path)
 
 // The backend populates author + category on this endpoint.
 type DraftDetail = Omit<Blog, "author" | "category"> & {
   content?: string;
-  coverImage?: string;
+  coverImage?: Blog["image"];
   updatedAt?: string;
   author?: { _id: string; name: string; email: string };
   category?: { _id: string; title: string };
@@ -95,18 +101,19 @@ export default function DraftDetailScreen() {
   );
 
   const paragraphs = useMemo(
-    () => toParagraphs(draft?.content),
-    [draft?.content],
+    () => toParagraphs(draft?.description || draft?.content),
+    [draft?.description, draft?.content],
   );
   const words = useMemo(
     () => paragraphs.join(" ").split(/\s+/).filter(Boolean).length,
     [paragraphs],
   );
   const readMin = Math.max(1, Math.round(words / 200));
-  const cover = draft?.image ? imgSrc(draft.image, "blog") : null;
+  const coverSource = draft?.image ?? draft?.coverImage;
+  const cover = coverSource ? imgSrc(coverSource, "blog") : null;
 
   // Adjust to your real edit route (same one the drafts list uses).
-  const edit = () => router.push(`/blog/${slug}/edit`);
+  const edit = () => router.push(`/profile/drafts/edit/${slug}`);
 
   if (isInitializing || !isAuthenticated) {
     return (

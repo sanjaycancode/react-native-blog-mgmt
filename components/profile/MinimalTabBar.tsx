@@ -16,7 +16,12 @@ import Animated, {
 
 import { useTheme } from "@/constants/theme";
 
-export type ProfileTab = "posts" | "saved" | "drafts";
+export type ProfileTab =
+  | "posts"
+  | "saved"
+  | "drafts"
+  | "submitted"
+  | "rejected";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
