@@ -40,6 +40,7 @@ import { useTheme } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 
 import type { Blog } from "@/types";
+import { WEBSITE_URL } from "@/constants/config";
 
 // Set this to your production site so shared links open the right page.
 const SITE_URL = "http://localhost:8081/";
@@ -85,11 +86,12 @@ export default function PublicProfileScreen() {
 
       // ⚠️ Wire these two to your backend (see notes). Same response shapes
       // as profileApi.get() and blogApi.list().
-      const [profileResult, blogsResult, statusResult] = await Promise.allSettled([
-        profileApi.getById(id),
-        blogApi.getByAuthor(id),
-        profileApi.getFollowStatus(id),
-      ]);
+      const [profileResult, blogsResult, statusResult] =
+        await Promise.allSettled([
+          profileApi.getById(id),
+          blogApi.getByAuthor(id),
+          profileApi.getFollowStatus(id),
+        ]);
 
       if (profileResult.status === "rejected") {
         const code = getStatusCode(profileResult.reason);
@@ -262,12 +264,16 @@ export default function PublicProfileScreen() {
   const firstName = name.trim().split(" ")[0];
 
   const handleShare = async () => {
+    const profileUrl = `${WEBSITE_URL}/authors/${encodeURIComponent(id)}`;
+
     try {
-      await Share.share({
-        message: `${name} on Nepal Can Blog: ${SITE_URL}profile/${id}`,
+      const result = await Share.share({
+        message: `Check out this author's profile: ${profileUrl}`,
+        title: "Author profile", // Android only (share dialog title)
       });
-    } catch {
-      // Dismissed or unsupported; nothing to do.
+
+    } catch (error) {
+      
     }
   };
 

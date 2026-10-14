@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 
@@ -118,15 +118,15 @@ export default function EmptyState({ type, onAction, title, body }: Props) {
       </Text>
 
       {!!copy.cta && !!onAction && (
-        <Pressable
+        <TouchableOpacity
+          activeOpacity={0.8}
           onPress={onAction}
           accessibilityRole="button"
-          style={({ pressed }) => [
+          style={[
             styles.cta,
             {
               backgroundColor: colors.primary,
               marginTop: spacing.lg,
-              opacity: pressed ? 0.8 : 1,
             },
           ]}
         >
@@ -139,7 +139,7 @@ export default function EmptyState({ type, onAction, title, body }: Props) {
           >
             {copy.cta}
           </Text>
-        </Pressable>
+        </TouchableOpacity>
       )}
     </View>
   );

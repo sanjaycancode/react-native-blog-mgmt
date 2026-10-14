@@ -5,7 +5,6 @@ import {
   FlatList,
   Image,
   Modal,
-  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -95,14 +94,15 @@ export default function ProfileConnectionsModal({
             >
               {title}
             </Text>
-            <Pressable
+            <TouchableOpacity
+              activeOpacity={0.6}
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Close"
               hitSlop={8}
             >
               <Ionicons name="close" size={24} color={colors.foreground} />
-            </Pressable>
+            </TouchableOpacity>
           </View>
 
           {isLoading ? (

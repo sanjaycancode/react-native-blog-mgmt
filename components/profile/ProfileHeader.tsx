@@ -1,4 +1,10 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 
@@ -63,18 +69,16 @@ function IconButton({
 }) {
   const { colors } = useTheme();
   return (
-    <Pressable
+    <TouchableOpacity
+      activeOpacity={0.6}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={8}
-      style={({ pressed }) => [
-        styles.iconButton,
-        { backgroundColor: colors.secondary, opacity: pressed ? 0.6 : 1 },
-      ]}
+      style={[styles.iconButton, { backgroundColor: colors.secondary }]}
     >
       <Ionicons name={icon} size={20} color={colors.foreground} />
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 
@@ -137,20 +141,22 @@ export default function ProfileHeader({
 
         <View style={styles.statsRow}>
           <Stat value={counts.posts} label="Posts" />
-          <Pressable
+          <TouchableOpacity
+            activeOpacity={0.65}
             onPress={() => onConnections("followers")}
             accessibilityRole="button"
             accessibilityLabel="View followers"
           >
             <Stat value={profile?.followersCount ?? 0} label="Followers" />
-          </Pressable>
-          <Pressable
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.65}
             onPress={() => onConnections("following")}
             accessibilityRole="button"
             accessibilityLabel="View following"
           >
             <Stat value={profile?.followingCount ?? 0} label="Following" />
-          </Pressable>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -195,7 +201,8 @@ export default function ProfileHeader({
         {socialLinks.length > 0 && (
           <View style={styles.socialRow}>
             {socialLinks.map(([label, value]) => (
-              <Pressable
+              <TouchableOpacity
+                activeOpacity={0.6}
                 key={label}
                 onPress={() => onOpenLink(value)}
                 accessibilityRole="link"
@@ -207,22 +214,22 @@ export default function ProfileHeader({
                   size={20}
                   color={colors.mutedForeground}
                 />
-              </Pressable>
+              </TouchableOpacity>
             ))}
           </View>
         )}
       </View>
 
       {/* Edit pill */}
-      <Pressable
+      <TouchableOpacity
+        activeOpacity={0.7}
         onPress={onEdit}
         accessibilityRole="button"
-        style={({ pressed }) => [
+        style={[
           styles.editPill,
           {
             backgroundColor: colors.secondary,
             marginTop: spacing.lg,
-            opacity: pressed ? 0.7 : 1,
           },
         ]}
       >
@@ -235,7 +242,7 @@ export default function ProfileHeader({
         >
           {profile ? "Edit profile" : "Complete your profile"}
         </Text>
-      </Pressable>
+      </TouchableOpacity>
     </View>
   );
 }

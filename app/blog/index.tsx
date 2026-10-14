@@ -10,7 +10,6 @@ import {
 } from "react-native";
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-
 import { Ionicons } from "@expo/vector-icons";
 
 import { BlogComments } from "@/components/BlogComments";

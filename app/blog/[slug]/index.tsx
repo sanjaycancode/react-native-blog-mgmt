@@ -938,14 +938,16 @@ export default function BlogDetailPage() {
               onPress={() => void handleLike()}
             />
             <View style={{ flex: 1 }} />
-            {blog.status === "published" ? (
-              <SaveBlogButton blogId={blog._id} />
-            ) : null}
-            <TopIconButton
-              icon="share-outline"
-              label="Share story"
-              onPress={() => void handleShare()}
-            />
+            <View style={styles.actionGroup}>
+              {blog.status === "published" ? (
+                <SaveBlogButton blogId={blog._id} />
+              ) : null}
+              <TopIconButton
+                icon="share-outline"
+                label="Share story"
+                onPress={() => void handleShare()}
+              />
+            </View>
           </View>
         </>
       )}
@@ -1121,6 +1123,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  actionGroup: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
   },
   likeButton: {
     flexDirection: "row",
