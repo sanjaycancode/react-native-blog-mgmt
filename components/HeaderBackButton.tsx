@@ -1,33 +1,42 @@
-import { useRouter } from "expo-router";
-import { HeaderBackButton as RNHeaderBackButton } from "expo-router/react-navigation";
+import { Pressable, StyleSheet } from "react-native";
 
-import type { ComponentProps } from "react";
+import { Ionicons } from "@expo/vector-icons";
 
-type RNHeaderBackButtonProps = ComponentProps<typeof RNHeaderBackButton>;
+import { useTheme } from "@/constants/theme";
 
-export function HeaderBackButton(props: RNHeaderBackButtonProps) {
-  const router = useRouter();
+type HeaderBackButtonProps = {
+  onPress: () => void;
+  label?: string;
+};
 
-  if (!router.canGoBack()) return null;
-
-  const isRouteGroupLabel = /^\([^)]+\)$/.test(props.label?.trim() ?? "");
-
-  const handlePress: RNHeaderBackButtonProps["onPress"] = () => {
-    if (props.onPress) {
-      props.onPress();
-      return;
-    }
-    router.back();
-  };
+export function HeaderBackButton({
+  onPress,
+  label = "Go back",
+}: HeaderBackButtonProps) {
+  const { colors } = useTheme();
 
   return (
-    <RNHeaderBackButton
-      {...props}
-      accessibilityLabel={isRouteGroupLabel ? "Go back" : props.accessibilityLabel}
-      displayMode={isRouteGroupLabel ? "minimal" : props.displayMode}
-      label={isRouteGroupLabel ? undefined : props.label}
-      truncatedLabel={isRouteGroupLabel ? undefined : props.truncatedLabel}
-      onPress={handlePress}
-    />
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.button,
+        { backgroundColor: colors.secondary, opacity: pressed ? 0.6 : 1 },
+      ]}
+    >
+      <Ionicons name="chevron-back" size={19} color={colors.foreground} />
+    </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  button: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

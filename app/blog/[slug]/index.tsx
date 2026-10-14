@@ -33,6 +33,8 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
+import { BlogComments } from "@/components/BlogComments";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
 import SaveBlogButton from "@/components/SaveBlogButton";
 import { ThemedButton } from "@/components/ThemedButton";
 
@@ -194,7 +196,7 @@ function TopBar({
     <View style={{ backgroundColor: colors.background }}>
       <View style={styles.topRow}>
         <View style={styles.topSide}>
-          <TopIconButton icon="chevron-back" label="Go back" onPress={onBack} />
+          <HeaderBackButton onPress={onBack} />
         </View>
         <Animated.Text
           numberOfLines={1}
@@ -291,7 +293,6 @@ function LikeButton({
   );
 }
 
-// ---- Loading skeleton ------------------------------------------------------
 
 function DetailSkeleton() {
   const { colors, spacing } = useTheme();
@@ -900,6 +901,22 @@ export default function BlogDetailPage() {
                   ))}
                 </View>
               ) : null}
+            </View>
+
+            <View
+              style={{
+                marginTop: spacing.xl,
+                marginHorizontal: PAD,
+                paddingTop: spacing.lg,
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: colors.border,
+              }}
+            >
+              <BlogComments
+                key={blog._id}
+                blogId={blog._id}
+                alwaysOpen
+              />
             </View>
           </Animated.ScrollView>
 

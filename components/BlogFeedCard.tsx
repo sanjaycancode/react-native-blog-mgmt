@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
@@ -19,6 +19,9 @@ import SaveBlogButton from "@/components/SaveBlogButton";
 import { ThemedText } from "@/components/ThemedText";
 
 import { useTheme } from "@/constants/theme";
+
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 
 import type { Blog } from "@/types/blog";
 
@@ -97,7 +100,6 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// React Native version of the web <Highlight /> util
 function Highlight({
   text,
   query,
@@ -112,7 +114,6 @@ function Highlight({
   const term = query?.trim();
   if (!term) return <>{text}</>;
 
-  // The capture group puts every match at an odd index
   const parts = text.split(new RegExp(`(${escapeRegExp(term)})`, "gi"));
 
   return (
@@ -149,6 +150,9 @@ export function BlogFeedCard({
 }: BlogFeedCardProps) {
   const { colors, spacing, radii, typography } = useTheme();
   const router = useRouter();
+  const { session, isInitializing } = useAuth();
+  const { showToast } = useToast();
+  const likeRequestRef = useRef(false);
 
   const authorName = blog.author?.name ?? "Unknown Author";
   const authorInitial = authorName.trim().charAt(0).toUpperCase() || "?";
@@ -157,9 +161,11 @@ export function BlogFeedCard({
   const excerpt = blog.description ? stripHtml(blog.description) : "";
 
   const [likesCount, setLikesCount] = useState(blog.likes?.length ?? 0);
-  const [liked, setLiked] = useState(
-    Boolean(currentUserId && blog.likes?.includes(currentUserId)),
+  const viewerId = currentUserId ?? session?.user.id;
+  const serverLiked = Boolean(
+    viewerId && blog.likes?.some((userId) => String(userId) === String(viewerId)),
   );
+  const [liked, setLiked] = useState(serverLiked);
   const [isLiking, setIsLiking] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCountState, setCommentCountState] = useState<number | null>(
@@ -169,26 +175,57 @@ export function BlogFeedCard({
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
 
+  const openBlog = () => {
+    if (onPress) {
+      onPress();
+      return;
+    }
+
+    router.push({ pathname: "/blog/[slug]", params: { slug: blog.slug } });
+  };
+
   const status = statusPalette[blog.status] ?? {
     bg: colors.badgeBg,
     fg: colors.badgeText,
   };
   const hasChips = (isProfile && Boolean(blog.status)) || Boolean(blog.tags?.length);
 
-  const toggleLike = async () => {
-    if (!onLike || isLiking) return;
+  useEffect(() => {
+    setLikesCount(blog.likes?.length ?? 0);
+    setLiked(serverLiked);
+  }, [blog._id, blog.likes, serverLiked]);
 
+  const toggleLike = async () => {
+    if (!onLike || likeRequestRef.current) return;
+    if (isInitializing) return;
+    if (!session) {
+      showToast("Please log in first to like this content.", "error");
+      router.push("/login");
+      return;
+    }
+
+    const previousLiked = liked;
+    const previousLikesCount = likesCount;
+    const nextLiked = !previousLiked;
+    likeRequestRef.current = true;
+    setLiked(nextLiked);
+    setLikesCount(Math.max(0, previousLikesCount + (nextLiked ? 1 : -1)));
     setIsLiking(true);
     try {
       const result = await onLike(blog._id);
       setLikesCount(result.likesCount);
       setLiked(result.liked);
     } catch (error) {
-      Alert.alert(
-        "Unable to update like",
-        error instanceof Error ? error.message : "Please try again.",
+      setLikesCount(previousLikesCount);
+      setLiked(previousLiked);
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Unable to update like. Please try again.",
+        "error",
       );
     } finally {
+      likeRequestRef.current = false;
       setIsLiking(false);
     }
   };
@@ -232,7 +269,6 @@ export function BlogFeedCard({
         },
       ]}
     >
-      {/* a. Header: author row */}
       <View
         style={[
           styles.header,
@@ -364,7 +400,7 @@ export function BlogFeedCard({
             >
               <ThemedText
                 variant="caption"
-                style={{ color: colors.badgePrimaryText }}
+                style={{ color: colors.badgePrimaryText, fontSize:10 }}
               >
                 <Highlight
                   text={tag}
@@ -378,12 +414,11 @@ export function BlogFeedCard({
         </View>
       ) : null}
 
-      {/* b. Body */}
       <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.md }}>
         <Pressable
-          accessibilityRole={onPress ? "button" : undefined}
-          disabled={!onPress}
-          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${blog.title}`}
+          onPress={openBlog}
         >
           <ThemedText variant="heading5" style={styles.title}>
             <Highlight
@@ -396,32 +431,36 @@ export function BlogFeedCard({
         </Pressable>
 
         {excerpt ? (
-          <ThemedText
-            variant="bodySmall"
-            semantic="muted"
-            numberOfLines={3}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Read ${blog.title}`}
+            onPress={openBlog}
             style={{ marginTop: spacing.xs }}
           >
-            <Highlight
-              text={excerpt}
-              query={search}
-              backgroundColor={colors.badgePrimaryBg}
-              color={colors.badgePrimaryText}
-            />
-            {"  "}
-            {onPress ? (
-              <ThemedText variant="bodySmall" semantic="primary" onPress={onPress}>
+            <ThemedText
+              variant="bodySmall"
+              semantic="muted"
+              numberOfLines={6}
+            >
+              <Highlight
+                text={excerpt}
+                query={search}
+                backgroundColor={colors.badgePrimaryBg}
+                color={colors.badgePrimaryText}
+              />
+              {"  "}
+              <ThemedText variant="bodySmall" semantic="primary">
                 Read more
               </ThemedText>
-            ) : null}
-          </ThemedText>
+            </ThemedText>
+          </Pressable>
         ) : null}
 
         {imageUri && !imageFailed ? (
           <Pressable
-            accessibilityRole={onPress ? "button" : undefined}
-            disabled={!onPress}
-            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${blog.title}`}
+            onPress={openBlog}
             style={[
               styles.imageFrame,
               {
@@ -451,7 +490,7 @@ export function BlogFeedCard({
       >
         <View style={styles.statItem}>
           <View style={[styles.likeBadge, { backgroundColor: colors.primary }]}>
-            <Ionicons name="thumbs-up" size={9} color="#ffffff" />
+            <Ionicons name="heart" size={9} color="#ffffff" />
           </View>
           <ThemedText variant="caption" semantic="muted">
             {likesCount} {likesCount === 1 ? "like" : "likes"}
@@ -469,7 +508,6 @@ export function BlogFeedCard({
         </Pressable>
       </View>
 
-      {/* d. Action bar */}
       <View
         style={[
           styles.actionBar,
@@ -482,9 +520,9 @@ export function BlogFeedCard({
       >
         <ActionButton
           label={liked ? "Liked" : "Like"}
-          icon={liked ? "thumbs-up" : "thumbs-up-outline"}
+          icon={liked ? "heart" : "heart-outline"}
           active={liked}
-          disabled={!onLike || isLiking}
+          disabled={!onLike ||  isInitializing}
           onPress={() => void toggleLike()}
         />
         <ActionButton
@@ -503,13 +541,12 @@ export function BlogFeedCard({
           : null}
       </View>
 
-      {/* e. Expandable comments */}
       {commentsOpen ? (
         <View
           style={[
             styles.comments,
             {
-              backgroundColor: colors.muted,
+              backgroundColor: colors.card,
               borderTopColor: colors.border,
               padding: spacing.md,
             },
@@ -527,7 +564,6 @@ export function BlogFeedCard({
         </View>
       ) : null}
 
-      {/* Profile actions menu (bottom sheet, works the same on iOS/Android/web) */}
       {isProfile ? (
         <Modal
           animationType="fade"
@@ -624,17 +660,7 @@ function ActionButton({
       ]}
     >
       <Ionicons name={icon} size={16} color={color} />
-      <ThemedText
-        variant="bodySmall"
-        style={{
-          color,
-          fontWeight: active
-            ? typography.weights.semibold
-            : typography.weights.medium,
-        }}
-      >
-        {label}
-      </ThemedText>
+      
     </Pressable>
   );
 }

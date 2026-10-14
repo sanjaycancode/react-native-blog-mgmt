@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -14,7 +13,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 
+import { BlogComments } from "@/components/BlogComments";
 import BlogFeedCard from "@/components/BlogFeedCard";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
 import SearchBox from "@/components/SearchBox";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
@@ -34,6 +35,66 @@ const PAGE_SIZE = 7;
 function getParam(value?: string | string[]) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
+
+/* ─── Category chips (replaces the dropdown + modal) ──────────── */
+
+function CategoryChips({
+  categories,
+  selected,
+  onSelect,
+}: {
+  categories: Category[];
+  selected: string;
+  onSelect: (title: string) => void;
+}) {
+  const { colors, spacing, radii, typography } = useTheme();
+  const items = [{ _id: "", title: "All" }, ...categories];
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.md }}
+    >
+      {items.map((item) => {
+        const isSelected = item._id ? selected === item.title : !selected;
+
+        return (
+          <Pressable
+            key={item._id || "all"}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
+            onPress={() => onSelect(item._id ? item.title : "")}
+            style={[
+              styles.chip,
+              {
+                backgroundColor: isSelected ? colors.primary : colors.card,
+                borderColor: isSelected ? colors.primary : colors.border,
+                borderRadius: radii.full,
+                paddingHorizontal: spacing.md,
+              },
+            ]}
+          >
+            <ThemedText
+              variant="bodySmall"
+              style={{
+                color: isSelected ? colors.primaryForeground : colors.foreground,
+                fontWeight: isSelected
+                  ? typography.weights.semibold
+                  : typography.weights.regular,
+              }}
+            >
+              {item.title}
+            </ThemedText>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+/* ─── Skeleton ────────────────────────────────────────────────── */
 
 function BlogCardSkeleton() {
   const { colors, spacing, radii } = useTheme();
@@ -99,6 +160,7 @@ function BlogCardSkeleton() {
   );
 }
 
+
 export default function BlogsPage() {
   const { colors, spacing, radii, typography } = useTheme();
   const router = useRouter();
@@ -113,6 +175,7 @@ export default function BlogsPage() {
 
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [totalBlogs, setTotalBlogs] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -121,7 +184,6 @@ export default function BlogsPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fetchMoreError, setFetchMoreError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
   const requestIdRef = useRef(0);
   const isFetchingRef = useRef(false);
 
@@ -163,11 +225,13 @@ export default function BlogsPage() {
         const result = response.data.result ?? [];
         const totalPages = response.data.meta?.totalPages ?? 1;
         setBlogs(result);
+        setTotalBlogs(response.data.meta?.totalBlogs ?? result.length);
         setHasMore(1 < totalPages);
       })
       .catch((error: unknown) => {
         if (cancelled || requestId !== requestIdRef.current) return;
         setBlogs([]);
+        setTotalBlogs(0);
         setHasMore(false);
         setFetchError(getErrorMessage(error));
       })
@@ -185,14 +249,12 @@ export default function BlogsPage() {
   }, [search, category, tag, reloadKey]);
 
   const updateFilters = useCallback(
-    (next: { search?: string; category?: string }) => {
-      const updatedParams = {
+    (next: { search?: string; category?: string; tag?: string }) => {
+      router.setParams({
         search: next.search ?? search,
         category: next.category ?? category,
-        tag: tag || undefined,
-      };
-
-      router.setParams(updatedParams);
+        tag: (next.tag ?? tag) || undefined,
+      });
     },
     [category, router, search, tag],
   );
@@ -259,127 +321,77 @@ export default function BlogsPage() {
     [router],
   );
 
-  const selectedCategoryTitle =
-    categories.find((item) => item.title === category)?.title ??
-    (category || "All categories");
+  const goBack = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  }, [router]);
 
-  const renderHeader = () => (
-    <View style={{ gap: spacing.lg, marginBottom: spacing.lg }}>
-       <SearchBox
+  const hasFilters = Boolean(search || category || tag);
+  const header = (
+    <View
+      style={[
+        {
+          backgroundColor: colors.background,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.sm,
+          gap: spacing.md,
+        },
+      ]}
+    >
+      <View style={[styles.titleRow, { gap: spacing.sm }]}>
+        <HeaderBackButton onPress={goBack} />
+
+        <View style={styles.titleText}>
+          <ThemedText
+            variant="heading5"
+            style={{
+              fontSize: typography.sizes["2xl"],
+              fontWeight: typography.weights.semibold,
+            }}
+          >
+            Explore
+          </ThemedText>
+
+        </View>
+      </View>
+
+      <SearchBox
         initialValue={search}
         onSearch={handleSearch}
         placeholder="Search blogs"
-      /> 
+        delay={500}
+      />
 
-      <View style={styles.filterHeading}>
-        <ThemedText variant="bodySmall" style={{ fontWeight: "600" }}>
-          Category
-        </ThemedText>
-      </View>
+      <CategoryChips
+        categories={categories}
+        selected={category}
+        onSelect={(title) => updateFilters({ category: title })}
+      />
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Category filter: ${selectedCategoryTitle}`}
-        accessibilityState={{ expanded: categoryMenuVisible }}
-        onPress={() => setCategoryMenuVisible(true)}
-        style={[
-          styles.categoryDropdown,
-          {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-            borderRadius: radii.md,
-            minHeight: 40,
-            
-            paddingHorizontal: spacing.md,
-          },
-        ]}
-      >
-        <ThemedText variant="bodySmall">{selectedCategoryTitle}</ThemedText>
-        <Ionicons
-          name={categoryMenuVisible ? "chevron-up" : "chevron-down"}
-          size={18}
-          color={colors.mutedForeground}
-        />
-      </Pressable>
-
-      <Modal
-        animationType="fade"
-        transparent
-        visible={categoryMenuVisible}
-        onRequestClose={() => setCategoryMenuVisible(false)}
-      >
-        <View style={styles.categoryModal}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Close category filter"
-            onPress={() => setCategoryMenuVisible(false)}
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: colors.foreground, opacity: 0.35 },
-            ]}
-          />
-          <View
-            style={[
-              styles.categoryMenu,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                borderRadius: radii.lg,
-                maxHeight: "70%",
-                padding: spacing.md,
-              },
-            ]}
+      {tag ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Remove tag filter ${tag}`}
+          onPress={() => updateFilters({ tag: "" })}
+          style={[
+            styles.activeTag,
+            {
+              backgroundColor: colors.badgePrimaryBg,
+              borderRadius: radii.full,
+              paddingHorizontal: spacing.sm,
+              gap: spacing.xs,
+            },
+          ]}
+        >
+          <ThemedText
+            variant="caption"
+            style={{ color: colors.badgePrimaryText }}
           >
-            <ThemedText variant="heading5" style={styles.categoryMenuTitle}>
-              Choose a category
-            </ThemedText>
-            <ScrollView>
-              {[
-                { _id: "", title: "All categories" },
-                ...categories,
-              ].map((item) => {
-                const selected = category === item.title || (!category && !item._id);
-
-                return (
-                    
-                  <Pressable
-                    key={item._id || "all"}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    onPress={() => {
-                      setCategoryMenuVisible(false);
-                      updateFilters({ category: item._id ? item.title : "" });
-                    }}
-                    style={[
-                      styles.categoryOption,
-                      { paddingVertical: spacing.md },
-                    ]}
-                  >
-                    <ThemedText
-                      variant="bodySmall"
-                      style={{
-                        color: selected ? colors.primary : colors.foreground,
-                        fontWeight: selected
-                          ? typography.weights.semibold
-                          : typography.weights.regular,
-                      }}
-                    >
-                      {item.title}
-                    </ThemedText>
-                    {selected ? (
-                      <Ionicons
-                        name="checkmark"
-                        size={18}
-                        color={colors.primary}
-                      />
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+            #{tag}
+          </ThemedText>
+          <Ionicons name="close" size={14} color={colors.badgePrimaryText} />
+        </Pressable>
+      ) : null}
     </View>
   );
 
@@ -395,13 +407,21 @@ export default function BlogsPage() {
             onLike={async (blogId) =>
               (await blogApi.toggleLike(blogId)).data.result
             }
-                shareUrl={`https://blog-ncc19.vercel.app/blogs/${item.slug}`}
+            renderComments={({ onCommentCountChange }) => (
+              <BlogComments
+                blogId={item._id}
+                onCommentCountChange={onCommentCountChange}
+              />
+            )}
+            shareUrl={`https://blog-ncc19.vercel.app/blogs/${item.slug}`}
           />
         )}
-        ListHeaderComponent={renderHeader()}
+        ListHeaderComponent={header}
+        stickyHeaderIndices={[0]}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.listContent,
-          { paddingHorizontal: spacing.md, paddingTop: spacing.lg },
+          { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
         ]}
         showsVerticalScrollIndicator={false}
         onEndReached={() => void loadMore()}
@@ -416,7 +436,7 @@ export default function BlogsPage() {
         }
         ListEmptyComponent={
           loading ? (
-            <View style={styles.loadingState}>
+            <View style={[styles.loadingState, { paddingTop: spacing.md }]}>
               <BlogCardSkeleton />
               <BlogCardSkeleton />
             </View>
@@ -435,11 +455,10 @@ export default function BlogsPage() {
                   ? `No blogs matching "${search}". Try another search.`
                   : "There are no stories to show for these filters yet."
               }
+              action={hasFilters ? "Clear filters" : undefined}
               onPress={
-                search || category
-                  ? () => {
-                      updateFilters({ search: "", category: "" });
-                    }
+                hasFilters
+                  ? () => updateFilters({ search: "", category: "", tag: "" })
                   : undefined
               }
             />
@@ -524,37 +543,25 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
   },
-  filterHeading: {
+
+  titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
   },
-  categoryDropdown: {
-    alignItems: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  categoryModal: {
-    alignItems: "center",
+  titleText: {
     flex: 1,
-    justifyContent: "center",
-    padding: 24,
   },
-  categoryMenu: {
+chip: {
+    height: 36,
     borderWidth: StyleSheet.hairlineWidth,
-    width: "100%",
-  },
-  categoryMenuTitle: {
-    marginBottom: 8,
-  },
-  categoryOption: {
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
   },
   activeTag: {
     alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 5,
   },
   loadingState: {
     gap: 4,
