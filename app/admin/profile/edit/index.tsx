@@ -248,38 +248,17 @@ export default function AdminEditProfilePage() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Button
-            mode="text"
-            icon={({ color, size }) => (
-              <Ionicons name="arrow-back" size={size} color={color} />
-            )}
-            onPress={() => router.replace("/admin/profile" as Href)}
-            style={styles.backButton}
-            disabled={saving}
-          >
-            Back to profile
-          </Button>
+
 
           <View style={{ gap: spacing.xs }}>
+            
             <Text
-              variant="labelLarge"
-              style={{
-                color: colors.primary,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-              }}
-            >
-              Admin settings
-            </Text>
-            <Text
-              variant="headlineMedium"
+              variant="headlineSmall"
               style={{ color: colors.foreground, fontWeight: "700" }}
             >
               Edit Profile
             </Text>
-            <Text variant="bodyMedium" style={{ color: colors.mutedForeground }}>
-              Keep your profile details up to date.
-            </Text>
+           
           </View>
 
           {loading ? (

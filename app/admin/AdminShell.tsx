@@ -1,15 +1,10 @@
 import { type ReactNode, useState } from "react";
 import { Modal, Pressable, StyleSheet, View } from "react-native";
 
-import { type Href,usePathname, useRouter } from "expo-router";
+import { type Href, usePathname, useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
-import {
-  Appbar,
-  Divider,
-  Surface,
-  Text,
-} from "react-native-paper";
+import { Appbar, Divider, Surface, Text } from "react-native-paper";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -51,27 +46,28 @@ const navigationItems = [
   },
 ] as const;
 
-export function AdminShell({
-  children,
-  userName,
-  onLogout,
-}: AdminShellProps) {
+export function AdminShell({ children, userName, onLogout }: AdminShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { colors, spacing, radii, isDark,toggleTheme} = useTheme();
+  const { colors, spacing, radii, isDark, toggleTheme } = useTheme();
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   const closeDrawer = () => setDrawerVisible(false);
 
   return (
+    // The SafeAreaView owns the status-bar inset. Its background is the card
+    // color so the strip behind the status bar matches the header.
     <SafeAreaView
       edges={["top", "left", "right"]}
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: colors.card }]}
     >
+      {/* statusBarHeight={0}: the SafeAreaView above already pads the top.
+          Without this, the APK adds the status-bar height twice. */}
       <Appbar.Header
         mode="small"
         elevated
+        statusBarHeight={0}
         style={{ backgroundColor: colors.card }}
       >
         <Appbar.Action
@@ -81,25 +77,26 @@ export function AdminShell({
           )}
           onPress={() => setDrawerVisible(true)}
         />
-        <Appbar.Content titleStyle={{fontSize:16, fontWeight:700}}
+        <Appbar.Content
+          titleStyle={{ fontSize: 16, fontWeight: "700" }}
           title={userName ? `Welcome, ${userName}` : "Administration"}
         />
         <Pressable
-                onPress={toggleTheme}
-                accessibilityRole="button"
-                accessibilityLabel="Toggle theme"
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.iconBtn,
-                  { backgroundColor: colors.secondary, opacity: pressed ? 0.6 : 1 },
-                ]}
-              >
-                <Ionicons
-                  name={isDark ? "sunny-outline" : "moon-outline"}
-                  size={19}
-                  color={colors.foreground}
-                />
-              </Pressable>
+          onPress={toggleTheme}
+          accessibilityRole="button"
+          accessibilityLabel="Toggle theme"
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.iconBtn,
+            { backgroundColor: colors.secondary, opacity: pressed ? 0.6 : 1 },
+          ]}
+        >
+          <Ionicons
+            name={isDark ? "sunny-outline" : "moon-outline"}
+            size={19}
+            color={colors.foreground}
+          />
+        </Pressable>
         <Appbar.Action
           accessibilityLabel="Log out"
           icon={({ color, size }) => (
@@ -109,7 +106,10 @@ export function AdminShell({
         />
       </Appbar.Header>
 
-      <View style={styles.content}>{children}</View>
+      {/* Page content keeps the normal background color */}
+      <View style={[styles.content, { backgroundColor: colors.background }]}>
+        {children}
+      </View>
 
       <Modal
         animationType="fade"
@@ -135,6 +135,8 @@ export function AdminShell({
                 backgroundColor: colors.card,
                 borderTopRightRadius: radii.lg,
                 borderBottomRightRadius: radii.lg,
+                // The Modal sits outside the SafeAreaView, so the drawer
+                // handles its own insets.
                 paddingTop: insets.top + spacing.md,
                 paddingBottom: insets.bottom + spacing.md,
                 paddingHorizontal: spacing.md,
@@ -181,34 +183,30 @@ export function AdminShell({
                       paddingHorizontal: spacing.sm,
                       paddingVertical: spacing.sm,
                       backgroundColor:
-                        pathname === item.href
+                        pathname === item.href || pressed
                           ? colors.muted
-                          : pressed
-                            ? colors.muted
-                        : colors.background
+                          : colors.background,
                     },
                   ]}
                 >
                   <Ionicons
                     name={item.icon}
                     size={20}
-                    color={ colors.primary }
+                    color={colors.primary}
                   />
                   <Text
                     variant="bodyMedium"
                     style={[
                       styles.navigationLabel,
-                      
                       {
-                        fontSize:15,
-                        fontWeight:600,
-                        color:  colors.foreground
+                        fontSize: 15,
+                        fontWeight: "600",
+                        color: colors.foreground,
                       },
                     ]}
                   >
                     {item.label}
                   </Text>
-                  
                 </Pressable>
               ))}
             </View>
@@ -221,10 +219,7 @@ export function AdminShell({
                   closeDrawer();
                   router.replace("/");
                 }}
-                style={[
-                  styles.footerAction,
-                  { paddingVertical: spacing.md },
-                ]}
+                style={[styles.footerAction, { paddingVertical: spacing.md }]}
               >
                 <Ionicons
                   name="home-outline"
@@ -239,10 +234,7 @@ export function AdminShell({
                   closeDrawer();
                   onLogout();
                 }}
-                style={[
-                  styles.footerAction,
-                  { paddingVertical: spacing.md },
-                ]}
+                style={[styles.footerAction, { paddingVertical: spacing.md }]}
               >
                 <Ionicons
                   name="log-out-outline"
@@ -301,7 +293,7 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 12,
   },
-    iconBtn: {
+  iconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
