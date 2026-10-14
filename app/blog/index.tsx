@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Href, useLocalSearchParams, useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 
@@ -355,12 +355,26 @@ export default function BlogsPage() {
         </View>
       </View>
 
-      <SearchBox
-        initialValue={search}
-        onSearch={handleSearch}
-        placeholder="Search blogs"
-        delay={500}
-      />
+    <Pressable
+  accessibilityRole="search"
+  accessibilityLabel="Search blogs and people"
+  onPress={() => router.push("/search" as Href)}
+  style={[
+    styles.searchBar,
+    {
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.md,
+      gap: spacing.sm,
+    },
+  ]}
+>
+  <Ionicons name="search-outline" size={18} color={colors.mutedForeground} />
+  <ThemedText variant="bodySmall" semantic="muted">
+    Search blogs and people
+  </ThemedText>
+</Pressable>
 
       <CategoryChips
         categories={categories}
@@ -611,4 +625,10 @@ chip: {
   endMessage: {
     textAlign: "center",
   },
+  searchBar: {
+  height: 44,
+  flexDirection: "row",
+  alignItems: "center",
+  borderWidth: 1,
+},
 });

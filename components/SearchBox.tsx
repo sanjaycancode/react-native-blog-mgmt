@@ -17,6 +17,7 @@ interface SearchBoxProps {
   onSearch: (value: string) => void;
   placeholder?: string;
   delay?: number;
+  autofocus?:boolean
 }
 
 
@@ -30,6 +31,7 @@ export default function SearchBox({
   onSearch,
   placeholder = "Search...",
   delay = 800,
+  autofocus=false
 }: SearchBoxProps) {
   const { colors, spacing, radii, typography } = useTheme();
   const [value, setValue] = useState(initialValue);
@@ -80,7 +82,7 @@ export default function SearchBox({
         returnKeyType="search"
         value={value}
         onChangeText={setValue}
-        onFocus={() => setFocused(true)}
+        autoFocus={autofocus}
         onBlur={() => setFocused(false)}
         placeholder={placeholder}
         placeholderTextColor={colors.mutedForeground}
