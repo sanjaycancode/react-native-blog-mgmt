@@ -17,7 +17,7 @@ interface SaveBlogButtonProps {
 }
 
 export function SaveBlogButton({ blogId }: SaveBlogButtonProps) {
-  const { colors, spacing } = useTheme();
+  const { colors } = useTheme();
   const { isAuthenticated, isInitializing } = useAuth();
   const { showToast } = useToast();
   const [isSaved, setIsSaved] = useState(false);
@@ -91,8 +91,7 @@ export function SaveBlogButton({ blogId }: SaveBlogButtonProps) {
       style={({ pressed }) => [
         styles.button,
         {
-          borderRadius: 8,
-          paddingVertical: spacing.sm,
+          backgroundColor: colors.secondary,
           opacity: pressed ? 0.7 : isSaving ? 0.6 : 1,
         },
       ]}
@@ -102,7 +101,7 @@ export function SaveBlogButton({ blogId }: SaveBlogButtonProps) {
       ) : (
         <Ionicons
           name={isSaved ? "bookmark" : "bookmark-outline"}
-          size={16}
+          size={20}
           color={isSaved ? colors.primary : colors.mutedForeground}
         />
       )}
@@ -113,8 +112,10 @@ export function SaveBlogButton({ blogId }: SaveBlogButtonProps) {
 const styles = StyleSheet.create({
   button: {
     alignItems: "center",
-    flex: 1,
+    borderRadius: 18,
+    height: 36,
     justifyContent: "center",
+    width: 36,
   },
 });
 

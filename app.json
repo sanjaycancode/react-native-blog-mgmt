@@ -10,9 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nepalcan.blog",
-      "associatedDomains": [
-        "applinks:blog-ncc19.vercel.app"
-      ],
+      "associatedDomains": ["applinks:blog-ncc19.vercel.app"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -38,10 +36,7 @@
               "pathPrefix": "/reset-password"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "package": "com.nepalcan.blog"
@@ -74,9 +69,10 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "7e18d7b1-6692-49a0-96f4-7bc809019a51"
-      }
+        "projectId": "3353958b-672e-4ec7-8136-59b3bc33cd79"
+      },
+      "API_URL": "https://blog-gxe2.onrender.com/api"
     },
-    "owner": "jyotinayak1s-team"
+    "owner": "amrtz"
   }
 }

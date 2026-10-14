@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import {
   LayoutChangeEvent,
-  Pressable,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -75,7 +75,8 @@ function TabButton({
   }));
 
   return (
-    <Pressable
+    <TouchableOpacity
+      activeOpacity={0.75}
       onPress={onPress}
       onPressIn={() => (scale.value = withSpring(0.9, SPRING))}
       onPressOut={() => (scale.value = withSpring(1, SPRING))}
@@ -112,7 +113,7 @@ function TabButton({
           </View>
         )}
       </Animated.View>
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 
