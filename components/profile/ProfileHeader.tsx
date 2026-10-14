@@ -3,7 +3,9 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import type { ProfileData } from "@/api/services/profile";
+
 import { useTheme } from "@/constants/theme";
+
 import { imgSrc } from "@/utils/getImgSrc";
 
 const SOCIAL_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -14,7 +16,8 @@ const SOCIAL_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 type Props = {
   profile: ProfileData | null;
-  counts: { posts: number; saved: number; drafts: number };
+  counts: { posts: number };
+  onConnections: (type: "followers" | "following") => void;
   onEdit: () => void;
   onAnalytics: () => void;
   onCreate: () => void;
@@ -78,6 +81,7 @@ function IconButton({
 export default function ProfileHeader({
   profile,
   counts,
+  onConnections,
   onEdit,
   onAnalytics,
   onCreate,
@@ -85,7 +89,7 @@ export default function ProfileHeader({
   onLogout,
 }: Props) {
   const { colors, typography, spacing } = useTheme();
-  const name = profile?.user?.name ?? "Your profile";
+  const name = profile?.user?.name ?? profile?.user?.username ?? "Your profile";
   const socialLinks = Object.entries(profile?.socialLinks ?? {}).filter(
     ([, value]) => Boolean(value),
   ) as [string, string][];
@@ -133,8 +137,20 @@ export default function ProfileHeader({
 
         <View style={styles.statsRow}>
           <Stat value={counts.posts} label="Posts" />
-          <Stat value={counts.saved} label="Saved" />
-          <Stat value={counts.drafts} label="Drafts" />
+          <Pressable
+            onPress={() => onConnections("followers")}
+            accessibilityRole="button"
+            accessibilityLabel="View followers"
+          >
+            <Stat value={profile?.followersCount ?? 0} label="Followers" />
+          </Pressable>
+          <Pressable
+            onPress={() => onConnections("following")}
+            accessibilityRole="button"
+            accessibilityLabel="View following"
+          >
+            <Stat value={profile?.followingCount ?? 0} label="Following" />
+          </Pressable>
         </View>
       </View>
 

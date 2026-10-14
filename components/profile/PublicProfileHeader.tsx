@@ -10,7 +10,9 @@ import Animated, {
 } from "react-native-reanimated";
 
 import type { ProfileData } from "@/api/services/profile";
+
 import { useTheme } from "@/constants/theme";
+
 import { imgSrc } from "@/utils/getImgSrc";
 
 const SOCIAL_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -22,9 +24,12 @@ const SOCIAL_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 type Props = {
   profile: ProfileData | null;
   postsCount: number;
-  topicsCount: number;
   onBack: () => void;
   onShare: () => void;
+  onToggleFollow: () => void;
+  isFollowing: boolean;
+  isFollowLoading: boolean;
+  onConnections: (type: "followers" | "following") => void;
   onOpenLink: (value: string) => void;
 };
 
@@ -76,13 +81,16 @@ export function BackButton({ onPress }: { onPress: () => void }) {
 export default function PublicProfileHeader({
   profile,
   postsCount,
-  topicsCount,
   onBack,
   onShare,
+  onToggleFollow,
+  isFollowing,
+  isFollowLoading,
+  onConnections,
   onOpenLink,
 }: Props) {
   const { colors, typography, spacing } = useTheme();
-  const name = profile?.user?.name ?? "Writer";
+  const name = profile?.user?.name ?? profile?.user?.username ?? "Writer";
   const socialLinks = Object.entries(profile?.socialLinks ?? {}).filter(
     ([, value]) => Boolean(value),
   ) as [string, string][];
@@ -124,7 +132,20 @@ export default function PublicProfileHeader({
 
         <View style={styles.statsRow}>
           <Stat value={postsCount} label="Posts" />
-          <Stat value={topicsCount} label="Topics" />
+          <Pressable
+            onPress={() => onConnections("followers")}
+            accessibilityRole="button"
+            accessibilityLabel="View followers"
+          >
+            <Stat value={profile?.followersCount ?? 0} label="Followers" />
+          </Pressable>
+          <Pressable
+            onPress={() => onConnections("following")}
+            accessibilityRole="button"
+            accessibilityLabel="View following"
+          >
+            <Stat value={profile?.followingCount ?? 0} label="Following" />
+          </Pressable>
         </View>
       </View>
 
@@ -185,33 +206,69 @@ export default function PublicProfileHeader({
         )}
       </View>
 
-      <Pressable
-        onPress={onShare}
-        accessibilityRole="button"
-        style={({ pressed }) => [
-          styles.pill,
-          {
-            backgroundColor: colors.secondary,
-            marginTop: spacing.lg,
-            opacity: pressed ? 0.7 : 1,
-          },
-        ]}
-      >
-        <Ionicons
-          name="share-outline"
-          size={16}
-          color={colors.secondaryForeground}
-        />
-        <Text
-          style={{
-            color: colors.secondaryForeground,
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.semibold,
-          }}
+      <View style={styles.actionRow}>
+        <Pressable
+          onPress={onToggleFollow}
+          disabled={isFollowLoading}
+          accessibilityRole="button"
+          accessibilityLabel={isFollowing ? "Unfollow user" : "Follow user"}
+          style={({ pressed }) => [
+            styles.actionPill,
+            {
+              backgroundColor: isFollowing
+                ? colors.secondary
+                : colors.primary,
+              opacity: pressed || isFollowLoading ? 0.7 : 1,
+            },
+          ]}
         >
-          Share profile
-        </Text>
-      </Pressable>
+          <Ionicons
+            name={isFollowing ? "person-remove-outline" : "person-add-outline"}
+            size={16}
+            color={
+              isFollowing ? colors.secondaryForeground : colors.primaryForeground
+            }
+          />
+          <Text
+            style={{
+              color: isFollowing
+                ? colors.secondaryForeground
+                : colors.primaryForeground,
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.semibold,
+            }}
+          >
+            {isFollowing ? "Following" : "Follow"}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={onShare}
+          accessibilityRole="button"
+          accessibilityLabel="Share profile"
+          style={({ pressed }) => [
+            styles.actionPill,
+            {
+              backgroundColor: colors.secondary,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          <Ionicons
+            name="share-outline"
+            size={16}
+            color={colors.secondaryForeground}
+          />
+          <Text
+            style={{
+              color: colors.secondaryForeground,
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.semibold,
+            }}
+          >
+            Share profile
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -243,6 +300,7 @@ export function PublicProfileSkeleton({ onBack }: { onBack: () => void }) {
         <View style={styles.heroRow}>
           <View style={[styles.avatar, block]} />
           <View style={styles.statsRow}>
+            <View style={[styles.skelStat, block]} />
             <View style={[styles.skelStat, block]} />
             <View style={[styles.skelStat, block]} />
           </View>
@@ -298,7 +356,13 @@ const styles = StyleSheet.create({
     gap: 16,
     marginTop: 10,
   },
-  pill: {
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 20,
+  },
+  actionPill: {
+    flex: 1,
     height: 38,
     borderRadius: 19,
     flexDirection: "row",

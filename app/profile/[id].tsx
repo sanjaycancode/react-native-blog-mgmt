@@ -10,12 +10,14 @@ import {
   View,
 } from "react-native";
 
-import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import EmptyState from "@/components/profile/EmptyState";
 import GridFeed, { GridSkeleton } from "@/components/home/GridFeed";
+import EmptyState from "@/components/profile/EmptyState";
+import ProfileConnectionsModal from "@/components/profile/ProfileConnectionsModal";
 import PublicProfileHeader, {
   BackButton,
   PublicProfileSkeleton,
@@ -23,7 +25,14 @@ import PublicProfileHeader, {
 import Button from "@/components/ThemedButton";
 
 import { blogApi } from "@/api/services";
-import { profileApi, type ProfileData } from "@/api/services/profile";
+import { getFollowUsers } from "@/api/services/follow";
+import {
+  profileApi,
+  type ProfileConnectionsResponse,
+  type ProfileConnectionUser,
+  type ProfileData,
+  resolveProfileConnections,
+} from "@/api/services/profile";
 
 import { useTheme } from "@/constants/theme";
 
@@ -56,6 +65,13 @@ export default function PublicProfileScreen() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [blogsFailed, setBlogsFailed] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [connectionsType, setConnectionsType] = useState<
+    "followers" | "following" | null
+  >(null);
+  const [connections, setConnections] = useState<ProfileConnectionUser[]>([]);
+  const [connectionsLoading, setConnectionsLoading] = useState(false);
+  const [connectionsError, setConnectionsError] = useState<string | null>(null);
 
   const goBack = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -69,9 +85,10 @@ export default function PublicProfileScreen() {
 
       // ⚠️ Wire these two to your backend (see notes). Same response shapes
       // as profileApi.get() and blogApi.list().
-      const [profileResult, blogsResult] = await Promise.allSettled([
+      const [profileResult, blogsResult, statusResult] = await Promise.allSettled([
         profileApi.getById(id),
         blogApi.getByAuthor(id),
+        profileApi.getFollowStatus(id),
       ]);
 
       if (profileResult.status === "rejected") {
@@ -84,7 +101,42 @@ export default function PublicProfileScreen() {
       const nextProfile = profileResult.value.data.profile ?? null;
       if (!nextProfile) return setStatus("notfound");
 
-      setProfile(nextProfile);
+      const followStatus =
+        statusResult.status === "fulfilled" ? statusResult.value : undefined;
+      const [followersResult, followingResult] = await Promise.allSettled([
+        profileApi.getFollowers(id),
+        profileApi.getFollowing(id),
+      ]);
+      const followersCount =
+        followersResult.status === "fulfilled"
+          ? followersResult.value.count
+          : undefined;
+      const followingCount =
+        followingResult.status === "fulfilled"
+          ? followingResult.value.count
+          : undefined;
+      setProfile((currentProfile) => ({
+        ...nextProfile,
+        isFollowing:
+          followStatus?.isFollowing ??
+          followStatus?.result?.isFollowing ??
+          nextProfile.isFollowing ??
+          currentProfile?.isFollowing,
+        followersCount:
+          followersCount ??
+          followStatus?.followersCount ??
+          followStatus?.result?.followersCount ??
+          nextProfile.followersCount ??
+          nextProfile.user?.followersCount ??
+          currentProfile?.followersCount,
+        followingCount:
+          followingCount ??
+          followStatus?.followingCount ??
+          followStatus?.result?.followingCount ??
+          nextProfile.followingCount ??
+          nextProfile.user?.followingCount ??
+          currentProfile?.followingCount,
+      }));
       setBlogs(
         blogsResult.status === "fulfilled"
           ? (blogsResult.value.data.result ?? [])
@@ -116,18 +168,96 @@ export default function PublicProfileScreen() {
     setIsRefreshing(false);
   }, [load]);
 
+  const handleToggleFollow = useCallback(async () => {
+    if (!id || !profile) return;
+    if (!session) {
+      void router.push("/login");
+      return;
+    }
+
+    setIsFollowLoading(true);
+    const wasFollowing = profile.isFollowing === true;
+    try {
+      if (wasFollowing) {
+        await profileApi.unfollowUser(id);
+      } else {
+        await profileApi.followUser(id);
+      }
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              isFollowing: !wasFollowing,
+              followersCount: Math.max(
+                0,
+                (current.followersCount ?? 0) + (wasFollowing ? -1 : 1),
+              ),
+            }
+          : current,
+      );
+      await load(true);
+    } catch (error) {
+      Alert.alert(
+        wasFollowing ? "Couldn't unfollow user" : "Couldn't follow user",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsFollowLoading(false);
+    }
+  }, [id, load, profile, router, session]);
+
+  const openConnections = useCallback(
+    async (type: "followers" | "following") => {
+      if (!id) return;
+
+      setConnectionsType(type);
+      setConnections([]);
+      setConnectionsError(null);
+      setConnectionsLoading(true);
+      try {
+        const response =
+          type === "followers"
+            ? await profileApi.getFollowers(id)
+            : await profileApi.getFollowing(id);
+        const data: ProfileConnectionsResponse = response;
+        const connectionUsers = getFollowUsers(data);
+        setConnections(await resolveProfileConnections(connectionUsers));
+        setProfile((current) =>
+          current
+            ? {
+                ...current,
+                ...(type === "followers"
+                  ? { followersCount: data.count }
+                  : { followingCount: data.count }),
+              }
+            : current,
+        );
+      } catch (error) {
+        setConnectionsError(
+          error instanceof Error ? error.message : "Unable to load this list.",
+        );
+      } finally {
+        setConnectionsLoading(false);
+      }
+    },
+    [id],
+  );
+  const toggleConnectionFollow = useCallback(
+    async (userId: string, isFollowing: boolean) => {
+      if (isFollowing) {
+        await profileApi.unfollowUser(userId);
+      } else {
+        await profileApi.followUser(userId);
+      }
+    },
+    [],
+  );
+
   // Visitors only ever see published posts, even if the API sends more.
   const published = useMemo(
     () => blogs.filter((b) => String(b.status) === "published"),
     [blogs],
   );
-  const topicsCount = useMemo(() => {
-    const titles = published
-      .map((b) => (b.category as { title?: string } | undefined)?.title)
-      .filter(Boolean);
-    return new Set(titles).size;
-  }, [published]);
-
   const name = profile?.user?.name ?? "This writer";
   const firstName = name.trim().split(" ")[0];
 
@@ -254,9 +384,12 @@ export default function PublicProfileScreen() {
         <PublicProfileHeader
           profile={profile}
           postsCount={published.length}
-          topicsCount={topicsCount}
           onBack={goBack}
           onShare={() => void handleShare()}
+          onToggleFollow={() => void handleToggleFollow()}
+          isFollowing={profile?.isFollowing ?? false}
+          isFollowLoading={isFollowLoading}
+          onConnections={(type) => void openConnections(type)}
           onOpenLink={(value) => void openExternal(value)}
         />
 
@@ -302,6 +435,15 @@ export default function PublicProfileScreen() {
           />
         )}
       </ScrollView>
+      <ProfileConnectionsModal
+        visible={connectionsType !== null}
+        title={connectionsType === "following" ? "Following" : "Followers"}
+        users={connections}
+        isLoading={connectionsLoading}
+        error={connectionsError}
+        onClose={() => setConnectionsType(null)}
+        onToggleFollow={toggleConnectionFollow}
+      />
     </SafeAreaView>
   );
 }

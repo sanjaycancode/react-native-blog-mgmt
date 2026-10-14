@@ -240,9 +240,7 @@ export default function GridFeed({
           onLongPress={
             onLongPressItem ? () => onLongPressItem(blog) : undefined
           }
-          onRemoveSaved={
-            onRemoveSaved ? () => onRemoveSaved(blog) : undefined
-          }
+          onRemoveSaved={onRemoveSaved ? () => onRemoveSaved(blog) : undefined}
         />
       ))}
     </View>
