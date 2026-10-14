@@ -285,7 +285,6 @@ export default function AdminUserDetailPage() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Back link */}
         <Button
           mode="text"
           compact
