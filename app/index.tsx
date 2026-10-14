@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -237,7 +237,8 @@ export default function HomeScreen() {
           {categoryOptions.map((cat) => {
             const isSelected = selectedCategory === cat;
             return (
-              <Pressable
+              <TouchableOpacity
+                activeOpacity={0.75}
                 key={cat}
                 onPress={() => setSelectedCategory(cat)}
                 accessibilityRole="button"
@@ -267,7 +268,7 @@ export default function HomeScreen() {
                 >
                   {cat}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>
@@ -299,7 +300,8 @@ export default function HomeScreen() {
               {(["grid", "list"] as const).map((view) => {
                 const isSelected = feedView === view;
                 return (
-                  <Pressable
+                  <TouchableOpacity
+                    activeOpacity={0.75}
                     key={view}
                     onPress={() => setFeedView(view)}
                     accessibilityRole="button"
@@ -327,27 +329,10 @@ export default function HomeScreen() {
                           : colors.mutedForeground
                       }
                     />
-                  </Pressable>
+                  </TouchableOpacity>
                 );
               })}
             </View>
-            <Pressable
-              onPress={() => void router.push("/blog")}
-              accessibilityRole="link"
-              hitSlop={8}
-              style={styles.linkRow}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.semibold,
-                }}
-              >
-                View all
-              </Text>
-              <Ionicons name="arrow-forward" size={14} color={colors.primary} />
-            </Pressable>
           </View>
         </View>
 
@@ -420,6 +405,34 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {!isBlogsLoading &&
+          !blogsError &&
+          filteredBlogs.length > 0 &&
+          feedView === "grid" && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => void router.push("/blog")}
+              accessibilityRole="link"
+              hitSlop={8}
+              style={[styles.viewAllFooter, { borderColor: colors.border }]}
+            >
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.semibold,
+                }}
+              >
+                View all stories
+              </Text>
+              <Ionicons
+                name="arrow-forward"
+                size={15}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
+          )}
+
         {!isBlogsLoading && !blogsError && topStory ? (
           <TopStoryHero
             blog={topStory}
@@ -472,7 +485,8 @@ export default function HomeScreen() {
               style={{ width: "100%" }}
             />
             {!isLoggedIn && (
-              <Pressable
+              <TouchableOpacity
+                activeOpacity={0.7}
                 onPress={() => void router.push("/login")}
                 accessibilityRole="link"
                 hitSlop={8}
@@ -494,7 +508,7 @@ export default function HomeScreen() {
                     Log in
                   </Text>
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             )}
           </Card>
         </View>
@@ -533,10 +547,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 7,
   },
-  linkRow: {
-    flexDirection: "row",
+  viewAllFooter: {
     alignItems: "center",
+    alignSelf: "center",
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
     gap: 4,
+    justifyContent: "center",
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   stateBox: {
     alignItems: "center",

@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { WEBSITE_URL } from "@/constants/config";
 
 import { useRouter } from "expo-router";
 

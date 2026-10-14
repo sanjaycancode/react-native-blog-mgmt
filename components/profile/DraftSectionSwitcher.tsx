@@ -1,9 +1,9 @@
 import { useState } from "react";
 import {
   LayoutChangeEvent,
-  Pressable,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -58,18 +58,14 @@ export default function DraftSectionSwitcher({ value, onChange }: Props) {
           section.charAt(0).toUpperCase() + section.slice(1);
 
         return (
-          <Pressable
+          <TouchableOpacity
+            activeOpacity={0.78}
             key={section}
             onPress={() => onChange(section)}
             accessibilityRole="tab"
             accessibilityLabel={label}
             accessibilityState={{ selected: active }}
-            style={({ pressed }) => [
-              styles.button,
-              {
-                opacity: pressed ? 0.78 : 1,
-              },
-            ]}
+            style={styles.button}
           >
             <Text
               style={{
@@ -82,7 +78,7 @@ export default function DraftSectionSwitcher({ value, onChange }: Props) {
             >
               {label}
             </Text>
-          </Pressable>
+          </TouchableOpacity>
         );
       })}
       <Animated.View
