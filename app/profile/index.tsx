@@ -5,27 +5,28 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
-  View,
 } from "react-native";
 
 import { useFocusEffect, useRouter } from "expo-router";
 
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import GridFeed from "@/components/home/GridFeed";
 import LogoLoader from "@/components/LogoLoader";
-import DraftSectionSwitcher, {
-  type DraftSection,
-} from "@/components/profile/DraftSectionSwitcher";
-import MinimalTabBar, {
-  type ProfileTab,
-} from "@/components/profile/MinimalTabBar";
+import type { DraftSection } from "@/components/profile/DraftSectionSwitcher";
+import type { ProfileTab } from "@/components/profile/MinimalTabBar";
+import ProfileConnectionsModal from "@/components/profile/ProfileConnectionsModal";
+import ProfileContent from "@/components/profile/ProfileContent";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 
 import { blogApi } from "@/api/services";
-import { profileApi, type ProfileData } from "@/api/services/profile";
+import { getFollowUsers } from "@/api/services/follow";
+import {
+  profileApi,
+  type ProfileConnectionsResponse,
+  type ProfileConnectionUser,
+  type ProfileData,
+  resolveProfileConnections,
+} from "@/api/services/profile";
 
 import { useTheme } from "@/constants/theme";
 
@@ -34,9 +35,6 @@ import { useAuth } from "@/context/AuthContext";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import type { Blog } from "@/types";
-
-// Your theme has no "destructive" token, so errors use this fixed red.
-const ERROR_COLOR = "#DC2626";
 
 function getStatusCode(error: unknown): number | undefined {
   return (error as { response?: { status?: number } })?.response?.status;
@@ -59,7 +57,7 @@ function getOwnerId(value: { _id?: string; id?: string } | undefined) {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { colors, typography, spacing } = useTheme();
+  const { colors } = useTheme();
   const { logout, session } = useAuth();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -71,6 +69,12 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
   const [draftSection, setDraftSection] = useState<DraftSection>("drafts");
   const [busyBlogId, setBusyBlogId] = useState<string | null>(null);
+  const [connectionsType, setConnectionsType] = useState<
+    "followers" | "following" | null
+  >(null);
+  const [connections, setConnections] = useState<ProfileConnectionUser[]>([]);
+  const [connectionsLoading, setConnectionsLoading] = useState(false);
+  const [connectionsError, setConnectionsError] = useState<string | null>(null);
   const handleLogout = () => {
     Alert.alert("Log out?", "You'll need need to sign in again. ", [
       { text: "Cancel", style: "cancel" },
@@ -115,6 +119,10 @@ export default function ProfileScreen() {
 
     if (profileResult.status === "fulfilled") {
       const profileData = profileResult.value.data.profile ?? null;
+      if (profileData?.user) {
+        profileData.followersCount ??= profileData.user.followersCount;
+        profileData.followingCount ??= profileData.user.followingCount;
+      }
       if (profileData?.savedBlogs?.length) {
         const savedEntries = profileData.savedBlogs;
         const savedIds = savedEntries
@@ -198,8 +206,67 @@ export default function ProfileScreen() {
     () => savedRaw.filter((b): b is Blog => typeof b === "object"),
     [savedRaw],
   );
-  const currentUserId =
-    getOwnerId(profile?.user) ?? getOwnerId(session?.user);
+  const currentUserId = getOwnerId(profile?.user) ?? getOwnerId(session?.user);
+
+  const openConnections = useCallback(
+    async (type: "followers" | "following") => {
+      if (!currentUserId) {
+        setConnectionsError("Unable to identify this profile.");
+        setConnectionsType(type);
+        return;
+      }
+
+      setConnectionsType(type);
+      setConnections([]);
+      setConnectionsError(null);
+      setConnectionsLoading(true);
+      try {
+        const response =
+          type === "followers"
+            ? await profileApi.getFollowers(currentUserId)
+            : await profileApi.getFollowing(currentUserId);
+        const data = response as unknown as ProfileConnectionsResponse;
+        const connectionUsers = getFollowUsers(data);
+        setConnections(await resolveProfileConnections(connectionUsers));
+        setProfile((current) =>
+          current
+            ? {
+                ...current,
+                ...(type === "followers"
+                  ? { followersCount: data.count }
+                  : { followingCount: data.count }),
+              }
+            : current,
+        );
+      } catch (error) {
+        setConnectionsError(getErrorMessage(error));
+      } finally {
+        setConnectionsLoading(false);
+      }
+    },
+    [currentUserId],
+  );
+  const toggleConnectionFollow = useCallback(
+    async (userId: string, isFollowing: boolean) => {
+      if (isFollowing) {
+        await profileApi.unfollowUser(userId);
+      } else {
+        await profileApi.followUser(userId);
+      }
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              followingCount: Math.max(
+                0,
+                (current.followingCount ?? 0) + (isFollowing ? -1 : 1),
+              ),
+            }
+          : current,
+      );
+    },
+    [],
+  );
   const posts = useMemo(() => {
     const byId = new Map(published.map((blog) => [blog._id, blog]));
     saved
@@ -349,8 +416,7 @@ export default function ProfileScreen() {
     activeTab === "drafts" && draftSection === "drafts"
       ? () => void router.push("/blog/create")
       : undefined;
-  const feedTab =
-    activeTab === "drafts" ? draftSection : activeTab;
+  const feedTab = activeTab === "drafts" ? draftSection : activeTab;
 
   return (
     <SafeAreaView
@@ -376,9 +442,8 @@ export default function ProfileScreen() {
           profile={profile}
           counts={{
             posts: posts.length,
-            saved: savedRaw.length,
-            drafts: drafts.length,
           }}
+          onConnections={(type) => void openConnections(type)}
           onEdit={() => void router.push("/profile/edit")}
           onAnalytics={() => void router.push("/profile/analytics")}
           onCreate={() => void router.push("/blog/create")}
@@ -386,65 +451,32 @@ export default function ProfileScreen() {
           onLogout={handleLogout}
         />
 
-        <MinimalTabBar
+        <ProfileContent
           activeTab={activeTab}
-          setTab={setActiveTab}
+          setActiveTab={setActiveTab}
           draftsCount={drafts.length}
+          draftSection={draftSection}
+          setDraftSection={setDraftSection}
+          profileError={profileError}
+          blogsError={blogsError}
+          feedTab={feedTab}
+          items={itemsByTab}
+          busyBlogId={busyBlogId}
+          onPressItem={handlePressItem}
+          onLongPressItem={handleLongPressItem}
+          onRemoveSaved={activeTab === "saved" ? handleRemoveSaved : undefined}
+          onEmptyAction={emptyAction}
         />
-
-        <View style={{ minHeight: 420 }}>
-          {activeTab === "drafts" && (
-            <DraftSectionSwitcher
-              value={draftSection}
-              onChange={setDraftSection}
-            />
-          )}
-          {!!profileError && (
-            <Text
-              style={{
-                color: ERROR_COLOR,
-                fontSize: typography.sizes.sm,
-                paddingHorizontal: spacing.xl,
-                paddingTop: spacing.md,
-              }}
-            >
-              {profileError}
-            </Text>
-          )}
-
-          {blogsError && activeTab !== "saved" ? (
-            <Text
-              style={{
-                color: ERROR_COLOR,
-                fontSize: typography.sizes.sm,
-                padding: spacing.xl,
-                textAlign: "center",
-              }}
-            >
-              {blogsError} Pull down to try again.
-            </Text>
-          ) : (
-            // Re-mounts on tab change so the cards stagger in fresh.
-            <Animated.View
-              key={feedTab}
-              entering={FadeIn.duration(180)}
-              exiting={FadeOut.duration(100)}
-            >
-              <GridFeed
-                items={itemsByTab[feedTab]}
-                type={feedTab}
-                busyId={busyBlogId}
-                onPressItem={handlePressItem}
-                onLongPressItem={handleLongPressItem}
-                onRemoveSaved={
-                  activeTab === "saved" ? handleRemoveSaved : undefined
-                }
-                onEmptyAction={emptyAction}
-              />
-            </Animated.View>
-          )}
-        </View>
       </ScrollView>
+      <ProfileConnectionsModal
+        visible={connectionsType !== null}
+        title={connectionsType === "following" ? "Following" : "Followers"}
+        users={connections}
+        isLoading={connectionsLoading}
+        error={connectionsError}
+        onClose={() => setConnectionsType(null)}
+        onToggleFollow={toggleConnectionFollow}
+      />
     </SafeAreaView>
   );
 }

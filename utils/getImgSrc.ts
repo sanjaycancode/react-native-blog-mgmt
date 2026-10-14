@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { env } from "@/lib/config/env";
 
 export interface ImageReference {
   key?: string;
@@ -9,10 +9,20 @@ export const imgSrc = (img?: ImageReference | string, folder = "blogs") => {
   if (!img) return undefined;
 
   if (typeof img === "string") {
-    return `${API_URL}/uploads/${folder}/${img}`;
+    if (/^https?:\/\//i.test(img)) return img;
+    return `${env.apiBaseUrl.replace(/\/$/, "")}/uploads/${folder}/${img.replace(
+      /^\/+/,
+      "",
+    )}`;
   }
 
   return (
-    img.url ?? (img.key ? `${API_URL}/uploads/${folder}/${img.key}` : undefined)
+    img.url ??
+    (img.key
+      ? `${env.apiBaseUrl.replace(/\/$/, "")}/uploads/${folder}/${img.key.replace(
+          /^\/+/,
+          "",
+        )}`
+      : undefined)
   );
 };
