@@ -173,7 +173,10 @@ const createStyles = (
       : resolvedColor;
   const padding =
     size === "small"
-      ? { paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md }
+      ? {
+          paddingVertical: theme.spacing.sm,
+          paddingHorizontal: theme.spacing.md,
+        }
       : size === "large"
         ? {
             paddingVertical: theme.spacing.lg,

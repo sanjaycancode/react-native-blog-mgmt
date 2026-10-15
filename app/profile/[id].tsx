@@ -34,13 +34,15 @@ import {
   resolveProfileConnections,
 } from "@/api/services/profile";
 
+import { WEBSITE_URL } from "@/constants/config";
 import { useTheme } from "@/constants/theme";
 
 // ⚠️ Same auth hook used everywhere else
 import { useAuth } from "@/context/AuthContext";
 
+import { getErrorMessage } from "@/utils/errorMessage";
+
 import type { Blog } from "@/types";
-import { WEBSITE_URL } from "@/constants/config";
 
 // Set this to your production site so shared links open the right page.
 const SITE_URL = "http://localhost:8081/";
@@ -49,6 +51,16 @@ type Status = "loading" | "ready" | "notfound" | "login" | "error";
 
 function getStatusCode(error: unknown): number | undefined {
   return (error as { response?: { status?: number } })?.response?.status;
+}
+
+function isProfileMissing(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return (
+    getStatusCode(error) === 400 ||
+    getStatusCode(error) === 404 ||
+    message.includes("doesn't exist") ||
+    message.includes("profile not found")
+  );
 }
 
 function getExternalHref(value: string) {
@@ -94,14 +106,21 @@ export default function PublicProfileScreen() {
         ]);
 
       if (profileResult.status === "rejected") {
-        const code = getStatusCode(profileResult.reason);
-        if (code === 404 || code === 400) return setStatus("notfound");
-        if (code === 401) return setStatus("login");
-        return setStatus("error");
+        if (!isProfileMissing(profileResult.reason)) {
+          if (getStatusCode(profileResult.reason) === 401) {
+            return setStatus("login");
+          }
+          return setStatus("error");
+        }
       }
 
-      const nextProfile = profileResult.value.data.profile ?? null;
-      if (!nextProfile) return setStatus("notfound");
+      const nextProfile =
+        profileResult.status === "fulfilled"
+          ? (profileResult.value.data.profile ?? null)
+          : null;
+      const profileForView: ProfileData = nextProfile ?? {
+        user: { id, name: "Writer", email: "" },
+      };
 
       const followStatus =
         statusResult.status === "fulfilled" ? statusResult.value : undefined;
@@ -118,25 +137,25 @@ export default function PublicProfileScreen() {
           ? followingResult.value.count
           : undefined;
       setProfile((currentProfile) => ({
-        ...nextProfile,
+        ...profileForView,
         isFollowing:
           followStatus?.isFollowing ??
           followStatus?.result?.isFollowing ??
-          nextProfile.isFollowing ??
+          profileForView.isFollowing ??
           currentProfile?.isFollowing,
         followersCount:
           followersCount ??
           followStatus?.followersCount ??
           followStatus?.result?.followersCount ??
-          nextProfile.followersCount ??
-          nextProfile.user?.followersCount ??
+          profileForView.followersCount ??
+          profileForView.user?.followersCount ??
           currentProfile?.followersCount,
         followingCount:
           followingCount ??
           followStatus?.followingCount ??
           followStatus?.result?.followingCount ??
-          nextProfile.followingCount ??
-          nextProfile.user?.followingCount ??
+          profileForView.followingCount ??
+          profileForView.user?.followingCount ??
           currentProfile?.followingCount,
       }));
       setBlogs(
@@ -271,10 +290,7 @@ export default function PublicProfileScreen() {
         message: `Check out this author's profile: ${profileUrl}`,
         title: "Author profile", // Android only (share dialog title)
       });
-
-    } catch (error) {
-      
-    }
+    } catch (error) {}
   };
 
   const openExternal = async (value: string) => {

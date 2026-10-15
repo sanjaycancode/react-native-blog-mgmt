@@ -14,7 +14,7 @@ type Options = {
 const PICK_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: ["images"],
   allowsEditing: true,
-  aspect: [9, 16], // matches the preview; Android crop only
+  aspect: [16, 9], // matches the preview; Android crop only
   quality: 0.85,
 };
 

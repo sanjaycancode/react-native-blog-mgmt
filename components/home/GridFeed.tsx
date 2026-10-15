@@ -158,24 +158,6 @@ export function GridCard({
             </View>
           )}
 
-          {type === "saved" && onRemoveSaved && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Remove ${blog.title} from saved blogs`}
-              hitSlop={8}
-              onPress={(event) => {
-                event.stopPropagation();
-                onRemoveSaved();
-              }}
-              style={[
-                styles.saveOverlay,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Ionicons name="bookmark" size={16} color={colors.primary} />
-            </Pressable>
-          )}
-
           <View style={styles.caption}>
             {!!categoryTitle(blog) && (
               <Text numberOfLines={1} style={styles.captionMeta}>
@@ -203,6 +185,21 @@ export function GridCard({
             )}
           </View>
         </Pressable>
+        {type === "saved" && onRemoveSaved && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${blog.title} from saved blogs`}
+            hitSlop={8}
+            onPress={onRemoveSaved}
+            disabled={busy}
+            style={[
+              styles.saveOverlay,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Ionicons name="bookmark" size={16} color={colors.primary} />
+          </Pressable>
+        )}
       </Animated.View>
     </Animated.View>
   );
@@ -308,6 +305,7 @@ const styles = StyleSheet.create({
   },
   cardWrap: {
     width: "100%",
+    position: "relative",
   },
   card: {
     borderRadius: 20,

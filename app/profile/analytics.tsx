@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BarChart, HBarList } from "@/components/analytics/barchart";
 import { DonutChart } from "@/components/analytics/donutchart";
 import { LineChart } from "@/components/analytics/LineChart";
-import { type Status,STATUS_LABELS } from "@/components/analytics/theme";
+import { type Status, STATUS_LABELS } from "@/components/analytics/theme";
 import {
   type AnalyticsPalette,
   useAnalyticsColors,
@@ -252,8 +252,8 @@ export default function AnalyticsScreen() {
   const labels = useMemo(() => d.current.map((x) => x.date), [d.current]);
   const pick = (b: { count: number; likes: number; views: number }) =>
     metric === "posts" ? b.count : b[metric];
-  const curData = useMemo(() => d.current.map(pick), [d.current, metric]);  
-  const prevData = useMemo(() => d.previous.map(pick), [d.previous, metric]);  
+  const curData = useMemo(() => d.current.map(pick), [d.current, metric]);
+  const prevData = useMemo(() => d.previous.map(pick), [d.previous, metric]);
   const viewsData = useMemo(() => d.current.map((x) => x.views), [d.current]);
 
   const delta = d.deltas[metric];
@@ -479,29 +479,6 @@ export default function AnalyticsScreen() {
               </Section>
             )}
 
-            {/* Views by day */}
-            <Section
-              title="Views by publish date"
-              hint={barScrub !== null ? undefined : "Drag across the bars"}
-              right={
-                barScrub !== null ? (
-                  <View style={{ alignItems: "flex-end" }}>
-                    <Text style={s.readValue}>
-                      {viewsData[barScrub].toLocaleString("en-US")}
-                    </Text>
-                    <Text style={s.readLabel}>{labels[barScrub]}</Text>
-                  </View>
-                ) : null
-              }
-            >
-              <BarChart
-                data={viewsData}
-                labels={labels}
-                animateKey={chartKey + "b"}
-                onScrub={setBarScrub}
-              />
-            </Section>
-
             {/* Tags */}
             {d.tagFrequency.length > 0 && (
               <Section title="What you write about" hint="Your most-used tags">
@@ -551,7 +528,10 @@ export default function AnalyticsScreen() {
                           <View
                             style={[
                               s.statusDot,
-                              { backgroundColor: C.statusColors[p.status as Status] },
+                              {
+                                backgroundColor:
+                                  C.statusColors[p.status as Status],
+                              },
                             ]}
                           />
                           <Text style={s.metaText}>
