@@ -26,6 +26,7 @@ import { useTheme } from "@/constants/theme";
 
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { Image } from "expo-image";
 
 import type { Category } from "@/types/category";
 

@@ -2,12 +2,13 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Platform,
   StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
+
+import { Image } from "expo-image";
 
 import type * as ImagePicker from "expo-image-picker";
 
@@ -118,9 +119,13 @@ export function FormImagePicker({
           ]}
         >
           <Image
+            key={image.uri}
             source={{ uri: image.uri }}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={150}
             style={styles.fill}
+            onError={(e) => console.log("image failed", image.uri, e.error)}
+            onLoad={(e) => console.log("LOADED", image.uri, e.source)}
           />
           <View
             style={[

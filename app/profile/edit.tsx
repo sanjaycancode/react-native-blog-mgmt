@@ -13,13 +13,18 @@ import {
   TextInputProps,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+
 import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { profileApi, type ProfileData } from "@/api/services/profile";
 
 import { useAuth } from "@/context/AuthContext";
-import { profileApi, type ProfileData } from "@/api/services/profile";
+
+import { getErrorMessage } from "@/utils/errorMessage";
 import { imgSrc } from "@/utils/getImgSrc";
 
 // Tokens taken from the main app theme (cream background, #e63946 primary).
@@ -53,6 +58,20 @@ function errorMessage(e: unknown, fallback: string): string {
     message?: string;
   };
   return err?.response?.data?.message ?? err?.message ?? fallback;
+}
+
+function getStatusCode(error: unknown): number | undefined {
+  return (error as { response?: { status?: number } })?.response?.status;
+}
+
+function isProfileMissing(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return (
+    getStatusCode(error) === 400 ||
+    getStatusCode(error) === 404 ||
+    message.includes("doesn't exist") ||
+    message.includes("profile not found")
+  );
 }
 
 // ── field ──────────────────────────────────────────────────────────────────
@@ -93,7 +112,9 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isAuthenticated, isInitializing, session } = useAuth();
-  const user = session?.user as { name?: string; email?: string } | undefined;
+  const user = session?.user as
+    | { name?: string; username?: string; email?: string }
+    | undefined;
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [bio, setBio] = useState("");
@@ -134,8 +155,17 @@ export default function EditProfileScreen() {
       setBio(p?.bio ?? "");
       setLinks(nextLinks);
       setInitial({ bio: p?.bio ?? "", links: nextLinks });
-    } catch {
-      setLoadError("We couldn't load your profile.");
+    } catch (error) {
+      if (isProfileMissing(error)) {
+        setProfile(null);
+        setBio("");
+        const emptyLinks = { instagram: "", facebook: "", website: "" };
+        setLinks(emptyLinks);
+        setInitial({ bio: "", links: emptyLinks });
+        setLoadError("");
+      } else {
+        setLoadError("We couldn't load your profile.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -221,7 +251,8 @@ export default function EditProfileScreen() {
     );
   }
 
-  const name = profile?.user?.name ?? user?.name ?? "";
+  const name =
+    profile?.user?.name ?? user?.name ?? user?.username ?? user?.email ?? "";
   const email = profile?.user?.email ?? user?.email ?? "";
   const currentAvatar =
     avatar?.uri ?? (profile?.avatar ? imgSrc(profile.avatar, "profile") : null);
