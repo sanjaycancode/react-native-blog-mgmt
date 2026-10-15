@@ -51,6 +51,7 @@
       [
         "expo-image-picker",
         {
+          "cameraPermission": "Allow NepalCanBlog to take photos for your blog.",
           "photosPermission": "Allow the app to access your photos to choose a blog cover image."
         }
       ],

@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useBlogAutosave } from "@/hooks/useBlogDraft";
+import type { BlogFormValues } from "@/types/blogAutoSave";
+import { keepImageForAutosave } from "@/utils/autoSaveImage";
 
 import type { ImagePickerAsset } from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -72,6 +75,30 @@ export default function CreateBlogPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  const formValues = useMemo<BlogFormValues>(
+    () => ({ title, description, category, status, tagsInput, image }),
+    [title, description, category, status, tagsInput, image],
+  );
+
+  const handleRestore = useCallback(
+    (saved: BlogFormValues) => {
+      setTitle(saved.title);
+      setDescription(saved.description);
+      setCategory(saved.category);
+      setStatus(saved.status);
+      setTagsInput(saved.tagsInput);
+      setImage(saved.image as ImagePickerAsset | null);
+      showToast("Restored your unsaved text.");
+    },
+    [showToast],
+  );
+
+  const { isRestoring, clearAutosave } = useBlogAutosave({
+    userId: session?.user.id,
+    values: formValues,
+    onRestore: handleRestore,
+  });
 
   const loadCategories = useCallback(async () => {
     setCategoriesLoading(true);
@@ -155,6 +182,7 @@ export default function CreateBlogPage() {
       }
 
       await blogApi.create(formData);
+      await clearAutosave();
       showToast("Blog created successfully.");
       router.replace("/profile");
     } catch (requestError) {
@@ -206,6 +234,18 @@ export default function CreateBlogPage() {
             Sign in to create and manage your stories.
           </ThemedText>
           <ThemedButton title="Sign in" onPress={() => router.push("/login")} />
+        </View>
+      </ThemedSafeAreaView>
+    );
+  }
+
+  if (isRestoring) {
+    return (
+      <ThemedSafeAreaView edges={["top", "left", "right"]}>
+        <View style={[styles.centered, { padding: spacing.xl }]}>
+          <ThemedText variant="bodySmall" semantic="muted">
+            Loading…
+          </ThemedText>
         </View>
       </ThemedSafeAreaView>
     );
@@ -423,8 +463,10 @@ export default function CreateBlogPage() {
             >
               <FormImagePicker
                 image={image}
-                onChange={(selectedImage) => {
-                  setImage(selectedImage);
+                onChange={async (selected) => {
+                  setImage(
+                    selected ? await keepImageForAutosave(selected) : null,
+                  );
                   setError(null);
                 }}
                 onError={(message) => setError(message)}
