@@ -411,6 +411,7 @@ export default function AdminBlogsPage() {
         <Dialog
           visible={confirmation !== null}
           onDismiss={() => !actionLoading && setConfirmation(null)}
+          style={{backgroundColor:colors.background}}
         >
           <Dialog.Title>
             {confirmation?.action === "feature"

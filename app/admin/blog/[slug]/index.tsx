@@ -684,6 +684,7 @@ export default function AdminBlogDetailPage() {
         <Dialog
           visible={action !== null}
           onDismiss={() => !processing && setAction(null)}
+          style={{backgroundColor:colors.background}}
         >
           <Dialog.Title>
             {action === "verify" ? "Verify blog" : "Reject blog"}
