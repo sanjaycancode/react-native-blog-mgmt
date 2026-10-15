@@ -36,7 +36,6 @@ function getParam(value?: string | string[]) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
-/* ─── Category chips (replaces the dropdown + modal) ──────────── */
 
 function CategoryChips({
   categories,
@@ -55,7 +54,7 @@ function CategoryChips({
       horizontal
       showsHorizontalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.md }}
+      contentContainerStyle={{ gap: spacing.xs, paddingRight: spacing.md }}
     >
       {items.map((item) => {
         const isSelected = item._id ? selected === item.title : !selected;
@@ -77,7 +76,7 @@ function CategoryChips({
             ]}
           >
             <ThemedText
-              variant="bodySmall"
+              variant="caption"
               style={{
                 color: isSelected ? colors.primaryForeground : colors.foreground,
                 fontWeight: isSelected
@@ -94,7 +93,6 @@ function CategoryChips({
   );
 }
 
-/* ─── Skeleton ────────────────────────────────────────────────── */
 
 function BlogCardSkeleton() {
   const { colors, spacing, radii } = useTheme();
@@ -338,23 +336,7 @@ export default function BlogsPage() {
         },
       ]}
     >
-      <View style={[styles.titleRow, { gap: spacing.sm }]}>
-        <HeaderBackButton onPress={goBack} />
-
-        <View style={styles.titleText}>
-          <ThemedText
-            variant="heading5"
-            style={{
-              fontSize: typography.sizes["2xl"],
-              fontWeight: typography.weights.semibold,
-            }}
-          >
-            Explore
-          </ThemedText>
-
-        </View>
-      </View>
-
+<View style={{flexDirection:"row",gap:spacing.sm}}>
     <Pressable
   accessibilityRole="search"
   accessibilityLabel="Search blogs and people"
@@ -367,6 +349,7 @@ export default function BlogsPage() {
       borderRadius: radii.md,
       paddingHorizontal: spacing.md,
       gap: spacing.sm,
+      flex:1
     },
   ]}
 >
@@ -375,37 +358,14 @@ export default function BlogsPage() {
     Search blogs and people
   </ThemedText>
 </Pressable>
-
+</View>
       <CategoryChips
         categories={categories}
         selected={category}
         onSelect={(title) => updateFilters({ category: title })}
       />
 
-      {tag ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Remove tag filter ${tag}`}
-          onPress={() => updateFilters({ tag: "" })}
-          style={[
-            styles.activeTag,
-            {
-              backgroundColor: colors.badgePrimaryBg,
-              borderRadius: radii.full,
-              paddingHorizontal: spacing.sm,
-              gap: spacing.xs,
-            },
-          ]}
-        >
-          <ThemedText
-            variant="caption"
-            style={{ color: colors.badgePrimaryText }}
-          >
-            #{tag}
-          </ThemedText>
-          <Ionicons name="close" size={14} color={colors.badgePrimaryText} />
-        </Pressable>
-      ) : null}
+     
     </View>
   );
 
@@ -566,7 +526,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 chip: {
-    height: 36,
+    height: 25,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
@@ -626,9 +586,10 @@ chip: {
     textAlign: "center",
   },
   searchBar: {
-  height: 44,
+  height: 35,
   flexDirection: "row",
   alignItems: "center",
   borderWidth: 1,
+
 },
 });
