@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -16,13 +16,13 @@ import SearchBox from "@/components/SearchBox";
 import { ThemedSafeAreaView } from "@/components/ThemedSafeAreaView";
 import { ThemedText } from "@/components/ThemedText";
 
-
-
 import { useTheme } from "@/constants/theme";
 import { SearchBlog, SearchUser } from "@/types/search";
 import { searchApi } from "@/api/services/search";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
 
 type Status = "idle" | "loading" | "done" | "error";
+type ResultFilter = "all" | "users" | "blogs";
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -32,6 +32,8 @@ export default function SearchScreen() {
   const [users, setUsers] = useState<SearchUser[]>([]);
   const [blogs, setBlogs] = useState<SearchBlog[]>([]);
   const [status, setStatus] = useState<Status>("idle");
+  const [filter, setFilter] = useState<ResultFilter>("all");
+  const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     const q = query.trim();
@@ -66,13 +68,27 @@ export default function SearchScreen() {
   const openBlog = (slug: string) =>
     router.push({ pathname: "/blog/[slug]", params: { slug } });
 
-  // Adjust this path to your author profile screen
-  const openUser = (id: string) => router.push(`/author/${id}` as Href);
+  const openUser = (id: string) => router.push(`/profile/${id}` as Href);
 
   const goBack = () =>
     router.canGoBack() ? router.back() : router.replace("/");
 
+  const changeFilter = (next: ResultFilter) => {
+    setFilter(next);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  };
+
   const hasResults = users.length > 0 || blogs.length > 0;
+  const visibleUsers = filter === "blogs" ? [] : users;
+  const visibleBlogs = filter === "users" ? [] : blogs;
+  const hasVisibleResults = visibleUsers.length > 0 || visibleBlogs.length > 0;
+
+  const emptyMessage =
+    hasResults && filter === "users"
+      ? `No people found for "${query}".`
+      : hasResults && filter === "blogs"
+        ? `No blogs found for "${query}".`
+        : `Nothing found for "${query}".`;
 
   return (
     <ThemedSafeAreaView edges={["top", "left", "right"]}>
@@ -86,22 +102,7 @@ export default function SearchScreen() {
           },
         ]}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          hitSlop={8}
-          onPress={goBack}
-          style={({ pressed }) => [
-            styles.backButton,
-            {
-              backgroundColor: pressed ? colors.muted : colors.card,
-              borderColor: colors.border,
-              borderRadius: radii.md,
-            },
-          ]}
-        >
-          <Ionicons name="chevron-back" size={22} color={colors.foreground} />
-        </Pressable>
+       <HeaderBackButton onPress={goBack}/>
 
         <View style={styles.searchWrap}>
           <SearchBox
@@ -114,7 +115,37 @@ export default function SearchScreen() {
         </View>
       </View>
 
+      {status === "done" && hasResults ? (
+        <View
+          style={[
+            styles.filterRow,
+            {
+              paddingHorizontal: spacing.md,
+              paddingBottom: spacing.sm,
+              gap: spacing.sm,
+            },
+          ]}
+        >
+          <FilterChip
+            label="All"
+            selected={filter === "all"}
+            onPress={() => changeFilter("all")}
+          />
+          <FilterChip
+            label={`People · ${users.length}`}
+            selected={filter === "users"}
+            onPress={() => changeFilter("users")}
+          />
+          <FilterChip
+            label={`Blogs · ${blogs.length}`}
+            selected={filter === "blogs"}
+            onPress={() => changeFilter("blogs")}
+          />
+        </View>
+      ) : null}
+
       <ScrollView
+        ref={scrollRef}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
@@ -147,20 +178,20 @@ export default function SearchScreen() {
           />
         ) : null}
 
-        {status === "done" && !hasResults ? (
+        {status === "done" && !hasVisibleResults ? (
           <Hint
             icon="document-text-outline"
             title="No results"
-            message={`Nothing found for "${query}".`}
+            message={emptyMessage}
           />
         ) : null}
 
-        {status === "done" && users.length > 0 ? (
+        {status === "done" && visibleUsers.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
             <ThemedText variant="bodySmall" style={styles.sectionTitle}>
               People
             </ThemedText>
-            {users.map((user) => (
+            {visibleUsers.map((user) => (
               <UserRow
                 key={user._id}
                 user={user}
@@ -170,12 +201,12 @@ export default function SearchScreen() {
           </View>
         ) : null}
 
-        {status === "done" && blogs.length > 0 ? (
+        {status === "done" && visibleBlogs.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
             <ThemedText variant="bodySmall" style={styles.sectionTitle}>
               Blogs
             </ThemedText>
-            {blogs.map((blog) => (
+            {visibleBlogs.map((blog) => (
               <BlogRow
                 key={blog._id}
                 blog={blog}
@@ -186,6 +217,50 @@ export default function SearchScreen() {
         ) : null}
       </ScrollView>
     </ThemedSafeAreaView>
+  );
+}
+
+/* ─── Filter chip ─────────────────────────────────────────────── */
+
+function FilterChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { colors, spacing, radii, typography } = useTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.filterChip,
+        {
+          backgroundColor: selected ? colors.primary : colors.card,
+          borderColor: selected ? colors.primary : colors.border,
+          borderRadius: radii.full,
+          paddingHorizontal: spacing.md,
+          opacity: pressed ? 0.8 : 1,
+        },
+      ]}
+    >
+      <ThemedText
+        variant="caption"
+        style={{
+          color: selected ? colors.primaryForeground : colors.foreground,
+          fontWeight: selected
+            ? typography.weights.semibold
+            : typography.weights.regular,
+        }}
+      >
+        {label}
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -341,6 +416,16 @@ const styles = StyleSheet.create({
   },
   searchWrap: {
     flex: 1,
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  filterChip: {
+    height: 30,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sectionTitle: {
     fontWeight: "600",
