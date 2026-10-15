@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import {
   Image,
   Linking,
@@ -17,7 +17,6 @@ import {
   Button,
   Card,
   Chip,
-  Divider,
   Text,
 } from "react-native-paper";
 
@@ -32,6 +31,32 @@ import { useToast } from "@/context/ToastContext";
 
 import { getErrorMessage } from "@/utils/errorMessage";
 import { imgSrc } from "@/utils/getImgSrc";
+
+const DANGER_COLOR = "#DC2626";
+const BANNER_HEIGHT = 66;
+const AVATAR_SIZE = 88;
+
+function getSocialIcon(label: string): keyof typeof Ionicons.glyphMap {
+  const key = label.toLowerCase();
+  if (key === "instagram") return "logo-instagram";
+  if (key === "facebook") return "logo-facebook";
+  if (key === "twitter" || key === "x") return "logo-twitter";
+  if (key === "linkedin") return "logo-linkedin";
+  if (key === "github") return "logo-github";
+  if (key === "youtube") return "logo-youtube";
+  return "globe-outline";
+}
+
+function getDisplayHost(value: string) {
+  try {
+    const href = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    const url = new URL(href);
+    const path = url.pathname === "/" ? "" : url.pathname;
+    return `${url.hostname.replace(/^www\./, "")}${path}`;
+  } catch {
+    return value;
+  }
+}
 
 export default function AdminProfilePage() {
   const router = useRouter();
@@ -69,9 +94,8 @@ export default function AdminProfilePage() {
         if (active) setProfile(response.data.profile ?? null);
       })
       .catch((requestError: unknown) => {
-        const status = (
-          requestError as { response?: { status?: number } }
-        )?.response?.status;
+        const status = (requestError as { response?: { status?: number } })
+          ?.response?.status;
         if (!active) return;
         if (status !== 400) setError("Unable to load profile.");
       })
@@ -138,6 +162,15 @@ export default function AdminProfilePage() {
     ([, value]) => typeof value === "string" && value.trim().length > 0,
   ) as [string, string][];
 
+  const cardStyle = {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: radii.lg ?? radii.md,
+    overflow: "hidden" as const,
+  };
+
+  const goToEdit = () => router.push("/admin/profile/edit" as Href);
+
   return (
     <AdminShell userName={authUser?.name} onLogout={() => void handleLogout()}>
       <ScrollView
@@ -146,7 +179,7 @@ export default function AdminProfilePage() {
           {
             padding: spacing.md,
             paddingBottom: spacing["4xl"],
-            gap: spacing.lg,
+            gap: spacing.md,
           },
         ]}
         refreshControl={
@@ -159,29 +192,23 @@ export default function AdminProfilePage() {
         }
         showsVerticalScrollIndicator={false}
       >
-
-
         {loading ? (
           <View style={[styles.centered, styles.loading, { gap: spacing.md }]}>
             <ActivityIndicator color={colors.primary} />
-            <Text variant="bodyMedium" style={{ color: colors.mutedForeground }}>
+            <Text
+              variant="bodyMedium"
+              style={{ color: colors.mutedForeground }}
+            >
               Loading profile...
             </Text>
           </View>
         ) : error ? (
-          <Card
-            mode="outlined"
-            style={{
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderRadius: radii.md,
-            }}
-          >
+          <Card mode="outlined" style={cardStyle}>
             <Card.Content style={[styles.centered, { gap: spacing.md }]}>
               <Ionicons
                 name="alert-circle-outline"
                 size={36}
-                color={colors.primary}
+                color={DANGER_COLOR}
               />
               <Text
                 variant="bodyMedium"
@@ -191,6 +218,9 @@ export default function AdminProfilePage() {
               </Text>
               <Button
                 mode="outlined"
+                icon={({ color, size }) => (
+                  <Ionicons name="refresh-outline" color={color} size={size} />
+                )}
                 onPress={() => setReloadKey((current) => current + 1)}
               >
                 Try again
@@ -198,24 +228,34 @@ export default function AdminProfilePage() {
             </Card.Content>
           </Card>
         ) : (
-          <Card
-            mode="outlined"
-            style={{
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderRadius: radii.md,
-            }}
-          >
-            <Card.Content style={{ padding: spacing.md, gap: spacing.lg }}>
-              <View style={[styles.header, { gap: spacing.md }]}>
-                <View style={[styles.identity, { gap: spacing.md }]}>
+          <>
+            <Card mode="outlined" style={cardStyle}>
+              <View
+                style={[
+                  styles.banner,
+                  {
+                    backgroundColor: colors.secondary,
+                    marginBottom: spacing.md,
+                  },
+                ]}
+              />
+              <View
+                style={{
+                  paddingHorizontal: spacing.md,
+                  paddingBottom: spacing.md,
+                }}
+              >
+                <View style={styles.avatarRow}>
                   {avatar ? (
                     <Image
                       source={{ uri: avatar }}
                       accessibilityLabel={`${displayName} profile picture`}
                       style={[
                         styles.avatar,
-                        { backgroundColor: colors.secondary },
+                        {
+                          backgroundColor: colors.secondary,
+                          borderColor: colors.card,
+                        },
                       ]}
                     />
                   ) : (
@@ -225,7 +265,7 @@ export default function AdminProfilePage() {
                         styles.avatarFallback,
                         {
                           backgroundColor: colors.secondary,
-                          borderRadius: radii.full,
+                          borderColor: colors.card,
                         },
                       ]}
                     >
@@ -240,151 +280,164 @@ export default function AdminProfilePage() {
                       </Text>
                     </View>
                   )}
-                  <View style={{ flex: 1, gap: spacing.xs }}>
-                    <Text
-                      variant="headlineSmall"
-                      style={{ color: colors.foreground, fontWeight: "700" }}
-                    >
-                      {displayName}
-                    </Text>
+                  <Button
+                    mode="outlined"
+                    icon={({ color, size }) => (
+                      <Ionicons
+                        name="create-outline"
+                        size={size}
+                        color={color}
+                      />
+                    )}
+                    onPress={goToEdit}
+                  >
+                    Edit
+                  </Button>
+                </View>
+
+                <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+                  <Text
+                    variant="headlineSmall"
+                    style={{ color: colors.foreground, fontWeight: "700" }}
+                  >
+                    {displayName}
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                    }}
+                  >
                     {email ? (
-                      <Text
-                        variant="bodyMedium"
-                        selectable
-                        style={{ color: colors.mutedForeground }}
-                      >
-                        {email}
-                      </Text>
+                      <View style={[styles.inlineRow, { gap: spacing.xs }]}>
+                        <Ionicons
+                          name="mail-outline"
+                          size={15}
+                          color={colors.mutedForeground}
+                        />
+                        <Text
+                          variant="bodyMedium"
+                          selectable
+                          style={{
+                            color: colors.mutedForeground,
+                            flexShrink: 1,
+                          }}
+                        >
+                          {email}
+                        </Text>
+                      </View>
                     ) : null}
                     <Chip
                       compact
                       style={{
-                        alignSelf: "flex-start",
-                        backgroundColor: colors.secondary,
+                        backgroundColor: colors.badgePrimaryBg,
+                        marginTop: spacing.xs,
+                        height: 32,
                       }}
                       textStyle={{
-                        color: colors.secondaryForeground,
+                        color: colors.badgePrimaryText,
                         fontWeight: "600",
+                        fontSize: 13,
                       }}
                     >
-                      Administrator
+                      Admin
                     </Chip>
                   </View>
                 </View>
-                <Button
-                  mode="outlined"
-                  icon={({ color, size }) => (
-                    <Ionicons
-                      name="create-outline"
-                      size={size}
-                      color={color}
-                    />
-                  )}
-                  onPress={() =>
-                    router.push("/admin/profile/edit" as Href)
-                  }
-                  compact
-                >
-                  Edit
-                </Button>
               </View>
+            </Card>
 
-              <Divider />
+            {profile?.bio ? (
+              <SectionCard title="About" icon="person-outline">
+                <Text
+                  variant="bodyMedium"
+                  style={{ color: colors.foreground, lineHeight: 24 }}
+                >
+                  {profile.bio}
+                </Text>
+              </SectionCard>
+            ) : null}
 
-              {profile?.bio ? (
+            {socialLinks.length > 0 ? (
+              <SectionCard title="Social links" icon="link-outline">
                 <View style={{ gap: spacing.sm }}>
-                  <Text
-                    variant="labelMedium"
-                    style={{
-                      color: colors.mutedForeground,
-                      fontWeight: "700",
-                      letterSpacing: 1,
-                    }}
-                  >
-                    ABOUT
-                  </Text>
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: colors.foreground, lineHeight: 24 }}
-                  >
-                    {profile.bio}
-                  </Text>
-                </View>
-              ) : null}
-
-              {socialLinks.length > 0 ? (
-                <View style={{ gap: spacing.sm }}>
-                  <Text
-                    variant="labelMedium"
-                    style={{
-                      color: colors.mutedForeground,
-                      fontWeight: "700",
-                      letterSpacing: 1,
-                    }}
-                  >
-                    SOCIAL LINKS
-                  </Text>
-                  <View style={{ gap: spacing.sm }}>
-                    {socialLinks.map(([label, value]) => (
-                      <Pressable
-                        key={label}
-                        accessibilityRole="link"
-                        accessibilityLabel={`${label}: ${value}`}
-                        onPress={() => void openSocialLink(value)}
-                        style={({ pressed }) => [
-                          styles.socialLink,
-                          {
-                            backgroundColor: colors.muted,
-                            borderRadius: radii.md,
-                            gap: spacing.sm,
-                            padding: spacing.md,
-                            opacity: pressed ? 0.7 : 1,
-                          },
+                  {socialLinks.map(([label, value]) => (
+                    <Pressable
+                      key={label}
+                      accessibilityRole="link"
+                      accessibilityLabel={`${label}: ${value}`}
+                      onPress={() => void openSocialLink(value)}
+                      style={({ pressed }) => [
+                        styles.socialLink,
+                        {
+                          backgroundColor: colors.muted,
+                          borderRadius: radii.md,
+                          gap: spacing.md,
+                          padding: spacing.sm,
+                          paddingRight: spacing.md,
+                          opacity: pressed ? 0.7 : 1,
+                        },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.socialIcon,
+                          { backgroundColor: colors.badgePrimaryBg },
                         ]}
                       >
                         <Ionicons
-                          name={
-                            label === "instagram"
-                              ? "logo-instagram"
-                              : label === "facebook"
-                                ? "logo-facebook"
-                                : "globe-outline"
-                          }
+                          name={getSocialIcon(label)}
                           size={18}
                           color={colors.primary}
                         />
+                      </View>
+                      <View style={{ flex: 1 }}>
                         <Text
-                          variant="bodyMedium"
-                          style={{ color: colors.foreground, flex: 1 }}
+                          variant="titleSmall"
+                          style={{
+                            color: colors.foreground,
+                            textTransform: "capitalize",
+                          }}
                         >
-                          <Text style={{ fontWeight: "700", textTransform: "capitalize" }}>
-                            {label}:{" "}
-                          </Text>
-                          {value}
+                          {label}
                         </Text>
-                        <Ionicons
-                          name="open-outline"
-                          size={16}
-                          color={colors.mutedForeground}
-                        />
-                      </Pressable>
-                    ))}
-                  </View>
+                        <Text
+                          variant="bodySmall"
+                          numberOfLines={1}
+                          style={{ color: colors.mutedForeground }}
+                        >
+                          {getDisplayHost(value)}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name="open-outline"
+                        size={16}
+                        color={colors.mutedForeground}
+                      />
+                    </Pressable>
+                  ))}
                 </View>
-              ) : null}
+              </SectionCard>
+            ) : null}
 
-              {!profile?.bio && socialLinks.length === 0 ? (
-                <View
-                  style={[
-                    styles.noDetails,
-                    {
-                      backgroundColor: colors.muted,
-                      borderRadius: radii.md,
-                      padding: spacing.md,
-                      gap: spacing.xs,
-                    },
-                  ]}
+            {/* Empty state */}
+            {!profile?.bio && socialLinks.length === 0 ? (
+              <Card mode="outlined" style={cardStyle}>
+                <Card.Content
+                  style={[styles.emptyDetails, { gap: spacing.sm }]}
                 >
+                  <View
+                    style={[
+                      styles.emptyIcon,
+                      { backgroundColor: colors.muted },
+                    ]}
+                  >
+                    <Ionicons
+                      name="sparkles-outline"
+                      size={26}
+                      color={colors.mutedForeground}
+                    />
+                  </View>
                   <Text
                     variant="titleSmall"
                     style={{ color: colors.foreground }}
@@ -393,17 +446,64 @@ export default function AdminProfilePage() {
                   </Text>
                   <Text
                     variant="bodySmall"
-                    style={{ color: colors.mutedForeground }}
+                    style={{
+                      color: colors.mutedForeground,
+                      textAlign: "center",
+                    }}
                   >
                     Add an about section or social links using Edit Profile.
                   </Text>
-                </View>
-              ) : null}
-            </Card.Content>
-          </Card>
+                  <Button mode="outlined" compact onPress={goToEdit}>
+                    Edit profile
+                  </Button>
+                </Card.Content>
+              </Card>
+            ) : null}
+          </>
         )}
       </ScrollView>
     </AdminShell>
+  );
+}
+
+function SectionCard({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  children: ReactNode;
+}) {
+  const { colors, spacing, radii } = useTheme();
+
+  return (
+    <Card
+      mode="outlined"
+      style={{
+        backgroundColor: colors.card,
+        borderColor: colors.border,
+        borderRadius: radii.lg ?? radii.md,
+      }}
+    >
+      <Card.Content style={{ gap: spacing.md }}>
+        <View style={[styles.inlineRow, { gap: spacing.sm }]}>
+          <Ionicons name={icon} size={16} color={colors.primary} />
+          <Text
+            variant="labelMedium"
+            style={{
+              color: colors.mutedForeground,
+              fontWeight: "700",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            }}
+          >
+            {title}
+          </Text>
+        </View>
+        {children}
+      </Card.Content>
+    </Card>
   );
 }
 
@@ -420,34 +520,49 @@ const styles = StyleSheet.create({
   loading: {
     minHeight: 220,
   },
-  backButton: {
-    alignSelf: "flex-start",
-    marginLeft: -8,
+  banner: {
+    height: BANNER_HEIGHT,
   },
-  header: {
-    alignItems: "flex-start",
+  avatarRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "flex-end",
     justifyContent: "space-between",
-  },
-  identity: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    minWidth: 220,
+    marginTop: -(AVATAR_SIZE / 2),
   },
   avatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    borderWidth: 4,
   },
   avatarFallback: {
     alignItems: "center",
     justifyContent: "center",
   },
+  inlineRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   socialLink: {
     alignItems: "center",
     flexDirection: "row",
   },
-  noDetails: {},
+  socialIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyDetails: {
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  emptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

@@ -6,6 +6,7 @@ import { type Href, usePathname, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Appbar, Divider, Surface, Text } from "react-native-paper";
 import {
+  SafeAreaProvider,
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
@@ -46,24 +47,157 @@ const navigationItems = [
   },
 ] as const;
 
-export function AdminShell({ children, userName, onLogout }: AdminShellProps) {
+
+
+function AdminDrawer({
+  userName,
+  onClose,
+  onLogout,
+}: {
+  userName?: string;
+  onClose: () => void;
+  onLogout: () => void;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { colors, spacing, radii, isDark, toggleTheme } = useTheme();
+  const { colors, spacing, radii } = useTheme();
+
+  return (
+    <View style={styles.drawerOverlay}>
+      <Pressable
+        accessibilityLabel="Close admin navigation"
+        accessibilityRole="button"
+        onPress={onClose}
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: colors.foreground, opacity: 0.4 },
+        ]}
+      />
+      <Surface
+        elevation={4}
+        style={[
+          styles.drawer,
+          {
+            backgroundColor: colors.card,
+            borderTopRightRadius: radii.lg,
+            borderBottomRightRadius: radii.lg,
+            paddingTop: insets.top + spacing.md,
+            paddingBottom: insets.bottom + spacing.sm,
+            paddingHorizontal: spacing.md,
+          },
+        ]}
+      >
+        <View style={[styles.drawerHeading, { paddingBottom: spacing.md }]}>
+          <View>
+            <Text variant="titleLarge">Admin Menu</Text>
+            {userName ? (
+              <Text
+                variant="bodyMedium"
+                style={{ color: colors.mutedForeground }}
+              >
+                {userName}
+              </Text>
+            ) : null}
+          </View>
+          <Appbar.Action
+            accessibilityLabel="Close admin navigation"
+            icon="close"
+            onPress={onClose}
+          />
+        </View>
+        <Divider />
+
+        <View style={{ paddingTop: spacing.sm }}>
+          {navigationItems.map((item) => (
+            <Pressable
+              key={item.label}
+              accessibilityRole={item.available ? "button" : undefined}
+              accessibilityState={{ disabled: !item.available }}
+              disabled={!item.available}
+              onPress={() => {
+                onClose();
+                if (item.available) {
+                  router.replace(item.href as Href);
+                }
+              }}
+              style={({ pressed }) => [
+                styles.navigationItem,
+                {
+                  borderRadius: radii.sm,
+                  paddingHorizontal: spacing.sm,
+                  paddingVertical: spacing.sm,
+                  backgroundColor:
+                    pathname === item.href || pressed
+                      ? colors.muted
+                      : colors.background,
+                },
+              ]}
+            >
+              <Ionicons name={item.icon} size={20} color={colors.primary} />
+              <Text
+                variant="bodyMedium"
+                style={[
+                  styles.navigationLabel,
+                  {
+                    fontSize: 15,
+                    fontWeight: "600",
+                    color: colors.foreground,
+                  },
+                ]}
+              >
+                {item.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.drawerFooter}>
+          <Divider />
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              onClose();
+              router.replace("/");
+            }}
+            style={[styles.footerAction, { paddingVertical: spacing.md }]}
+          >
+            <Ionicons name="home-outline" size={20} color={colors.foreground} />
+            <Text variant="bodyMedium">Back to app</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              onClose();
+              onLogout();
+            }}
+            style={[styles.footerAction, { paddingVertical: spacing.md }]}
+          >
+            <Ionicons name="log-out-outline" size={20} color={colors.primary} />
+            <Text variant="bodyMedium" style={{ color: colors.primary }}>
+              Log out
+            </Text>
+          </Pressable>
+        </View>
+      </Surface>
+    </View>
+  );
+}
+
+
+export function AdminShell({ children, userName, onLogout }: AdminShellProps) {
+  const { colors, isDark, toggleTheme } = useTheme();
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   const closeDrawer = () => setDrawerVisible(false);
 
   return (
-    // The SafeAreaView owns the status-bar inset. Its background is the card
-    // color so the strip behind the status bar matches the header.
+ 
     <SafeAreaView
       edges={["top", "left", "right"]}
       style={[styles.container, { backgroundColor: colors.card }]}
     >
-      {/* statusBarHeight={0}: the SafeAreaView above already pads the top.
-          Without this, the APK adds the status-bar height twice. */}
+
       <Appbar.Header
         mode="small"
         elevated
@@ -115,139 +249,16 @@ export function AdminShell({ children, userName, onLogout }: AdminShellProps) {
         animationType="fade"
         onRequestClose={closeDrawer}
         transparent
+  
         visible={drawerVisible}
       >
-        <View style={styles.drawerOverlay}>
-          <Pressable
-            accessibilityLabel="Close admin navigation"
-            accessibilityRole="button"
-            onPress={closeDrawer}
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: colors.foreground, opacity: 0.4 },
-            ]}
+        <SafeAreaProvider>
+          <AdminDrawer
+            userName={userName}
+            onClose={closeDrawer}
+            onLogout={onLogout}
           />
-          <Surface
-            elevation={4}
-            style={[
-              styles.drawer,
-              {
-                backgroundColor: colors.card,
-                borderTopRightRadius: radii.lg,
-                borderBottomRightRadius: radii.lg,
-                // The Modal sits outside the SafeAreaView, so the drawer
-                // handles its own insets.
-                paddingTop: insets.top + spacing.md,
-                paddingBottom: insets.bottom + spacing.md,
-                paddingHorizontal: spacing.md,
-              },
-            ]}
-          >
-            <View style={[styles.drawerHeading, { paddingBottom: spacing.md }]}>
-              <View>
-                <Text variant="titleLarge">Admin Menu</Text>
-                {userName ? (
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: colors.mutedForeground }}
-                  >
-                    {userName}
-                  </Text>
-                ) : null}
-              </View>
-              <Appbar.Action
-                accessibilityLabel="Close admin navigation"
-                icon="close"
-                onPress={closeDrawer}
-              />
-            </View>
-            <Divider />
-
-            <View style={{ paddingTop: spacing.sm }}>
-              {navigationItems.map((item) => (
-                <Pressable
-                  key={item.label}
-                  accessibilityRole={item.available ? "button" : undefined}
-                  accessibilityState={{ disabled: !item.available }}
-                  disabled={!item.available}
-                  onPress={() => {
-                    closeDrawer();
-                    if (item.available) {
-                      router.replace(item.href as Href);
-                    }
-                  }}
-                  style={({ pressed }) => [
-                    styles.navigationItem,
-                    {
-                      borderRadius: radii.sm,
-                      paddingHorizontal: spacing.sm,
-                      paddingVertical: spacing.sm,
-                      backgroundColor:
-                        pathname === item.href || pressed
-                          ? colors.muted
-                          : colors.background,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={item.icon}
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <Text
-                    variant="bodyMedium"
-                    style={[
-                      styles.navigationLabel,
-                      {
-                        fontSize: 15,
-                        fontWeight: "600",
-                        color: colors.foreground,
-                      },
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <View style={styles.drawerFooter}>
-              <Divider />
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  closeDrawer();
-                  router.replace("/");
-                }}
-                style={[styles.footerAction, { paddingVertical: spacing.md }]}
-              >
-                <Ionicons
-                  name="home-outline"
-                  size={20}
-                  color={colors.foreground}
-                />
-                <Text variant="bodyMedium">Back to app</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  closeDrawer();
-                  onLogout();
-                }}
-                style={[styles.footerAction, { paddingVertical: spacing.md }]}
-              >
-                <Ionicons
-                  name="log-out-outline"
-                  size={20}
-                  color={colors.primary}
-                />
-                <Text variant="bodyMedium" style={{ color: colors.primary }}>
-                  Log out
-                </Text>
-              </Pressable>
-            </View>
-          </Surface>
-        </View>
+        </SafeAreaProvider>
       </Modal>
     </SafeAreaView>
   );
