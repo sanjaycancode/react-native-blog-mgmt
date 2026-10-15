@@ -230,7 +230,6 @@ function TopBar({
   );
 }
 
-// ---- Like button with optimistic pop ---------------------------------------
 
 function LikeButton({
   liked,
