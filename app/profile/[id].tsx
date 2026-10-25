@@ -25,27 +25,19 @@ import PublicProfileHeader, {
 import Button from "@/components/ThemedButton";
 
 import { blogApi } from "@/api/services";
-import { getFollowUsers } from "@/api/services/follow";
-import {
-  profileApi,
-  type ProfileConnectionsResponse,
-  type ProfileConnectionUser,
-  type ProfileData,
-  resolveProfileConnections,
-} from "@/api/services/profile";
+import { profileApi, type ProfileData } from "@/api/services/profile";
 
 import { WEBSITE_URL } from "@/constants/config";
 import { useTheme } from "@/constants/theme";
 
-// ⚠️ Same auth hook used everywhere else
 import { useAuth } from "@/context/AuthContext";
 
+import { useProfileConnections } from "@/hooks/useProfileConnections";
+
 import { getErrorMessage } from "@/utils/errorMessage";
+import { getOwnerId } from "@/utils/profileHelpers";
 
 import type { Blog } from "@/types";
-
-// Set this to your production site so shared links open the right page.
-const SITE_URL = "http://localhost:8081/";
 
 type Status = "loading" | "ready" | "notfound" | "login" | "error";
 
@@ -79,12 +71,15 @@ export default function PublicProfileScreen() {
   const [blogsFailed, setBlogsFailed] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
-  const [connectionsType, setConnectionsType] = useState<
-    "followers" | "following" | null
-  >(null);
-  const [connections, setConnections] = useState<ProfileConnectionUser[]>([]);
-  const [connectionsLoading, setConnectionsLoading] = useState(false);
-  const [connectionsError, setConnectionsError] = useState<string | null>(null);
+
+  const myId = getOwnerId(session?.user as { _id?: string; id?: string });
+
+  // Followers/following modal logic lives in the shared hook.
+  const connections = useProfileConnections({
+    profileUserId: id,
+    viewerId: myId,
+    setProfile,
+  });
 
   const goBack = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -96,8 +91,6 @@ export default function PublicProfileScreen() {
       if (!id) return;
       if (!silent) setStatus("loading");
 
-      // ⚠️ Wire these two to your backend (see notes). Same response shapes
-      // as profileApi.get() and blogApi.list().
       const [profileResult, blogsResult, statusResult] =
         await Promise.allSettled([
           profileApi.getById(id),
@@ -174,8 +167,6 @@ export default function PublicProfileScreen() {
   }, [load]);
 
   // If you're looking at yourself, show the full (private) profile instead.
-  const me = session?.user as { _id?: string; id?: string } | undefined;
-  const myId = me?._id ?? me?.id;
   const profileUserId = (profile?.user as { _id?: string } | undefined)?._id;
   useEffect(() => {
     if (myId && (myId === id || myId === profileUserId)) {
@@ -185,8 +176,11 @@ export default function PublicProfileScreen() {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await load(true);
-    setIsRefreshing(false);
+    try {
+      await load(true);
+    } finally {
+      setIsRefreshing(false);
+    }
   }, [load]);
 
   const handleToggleFollow = useCallback(async () => {
@@ -227,53 +221,6 @@ export default function PublicProfileScreen() {
     }
   }, [id, load, profile, router, session]);
 
-  const openConnections = useCallback(
-    async (type: "followers" | "following") => {
-      if (!id) return;
-
-      setConnectionsType(type);
-      setConnections([]);
-      setConnectionsError(null);
-      setConnectionsLoading(true);
-      try {
-        const response =
-          type === "followers"
-            ? await profileApi.getFollowers(id)
-            : await profileApi.getFollowing(id);
-        const data: ProfileConnectionsResponse = response;
-        const connectionUsers = getFollowUsers(data);
-        setConnections(await resolveProfileConnections(connectionUsers));
-        setProfile((current) =>
-          current
-            ? {
-                ...current,
-                ...(type === "followers"
-                  ? { followersCount: data.count }
-                  : { followingCount: data.count }),
-              }
-            : current,
-        );
-      } catch (error) {
-        setConnectionsError(
-          error instanceof Error ? error.message : "Unable to load this list.",
-        );
-      } finally {
-        setConnectionsLoading(false);
-      }
-    },
-    [id],
-  );
-  const toggleConnectionFollow = useCallback(
-    async (userId: string, isFollowing: boolean) => {
-      if (isFollowing) {
-        await profileApi.unfollowUser(userId);
-      } else {
-        await profileApi.followUser(userId);
-      }
-    },
-    [],
-  );
-
   // Visitors only ever see published posts, even if the API sends more.
   const published = useMemo(
     () => blogs.filter((b) => String(b.status) === "published"),
@@ -284,13 +231,14 @@ export default function PublicProfileScreen() {
 
   const handleShare = async () => {
     const profileUrl = `${WEBSITE_URL}/authors/${encodeURIComponent(id)}`;
-
     try {
-      const result = await Share.share({
+      await Share.share({
         message: `Check out this author's profile: ${profileUrl}`,
         title: "Author profile", // Android only (share dialog title)
       });
-    } catch (error) {}
+    } catch {
+      // user dismissed or share failed; nothing to do
+    }
   };
 
   const openExternal = async (value: string) => {
@@ -411,7 +359,7 @@ export default function PublicProfileScreen() {
           onToggleFollow={() => void handleToggleFollow()}
           isFollowing={profile?.isFollowing ?? false}
           isFollowLoading={isFollowLoading}
-          onConnections={(type) => void openConnections(type)}
+          onConnections={(type) => void connections.open(type)}
           onOpenLink={(value) => void openExternal(value)}
         />
 
@@ -457,14 +405,18 @@ export default function PublicProfileScreen() {
           />
         )}
       </ScrollView>
+
       <ProfileConnectionsModal
-        visible={connectionsType !== null}
-        title={connectionsType === "following" ? "Following" : "Followers"}
-        users={connections}
-        isLoading={connectionsLoading}
-        error={connectionsError}
-        onClose={() => setConnectionsType(null)}
-        onToggleFollow={toggleConnectionFollow}
+        visible={connections.type !== null}
+        title={connections.type === "following" ? "Following" : "Followers"}
+        users={connections.connections}
+        isLoading={connections.isLoading}
+        error={connections.error}
+        followingIds={connections.followingIds}
+        currentUserId={myId}
+        onClose={connections.close}
+        onToggleFollow={connections.toggleFollow}
+        isOwn={false}
       />
     </SafeAreaView>
   );
