@@ -39,7 +39,11 @@
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
-      "package": "com.nepalcan.blog"
+      "package": "com.nepalcan.blog",
+      "softwareKeyboardLayoutMode": "pan",
+      "androidStatusBar": {
+        "translucent": false
+      }
     },
     "web": {
       "bundler": "metro",
@@ -70,10 +74,10 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "3353958b-672e-4ec7-8136-59b3bc33cd79"
+        "projectId": "7e18d7b1-6692-49a0-96f4-7bc809019a51"
       },
       "API_URL": "https://blog-gxe2.onrender.com/api"
     },
-    "owner": "amrtz"
+    "owner": "jyotinayak1s-team"
   }
 }

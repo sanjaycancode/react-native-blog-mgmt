@@ -15,7 +15,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/constants/theme";
 
 interface ThemedFABProps {
-  label: string;
+  label?: string;
   onPress: () => void;
   isScrolled?: boolean;
   iconName?: keyof typeof Ionicons.glyphMap;
@@ -41,9 +41,9 @@ export function ThemedFAB({
   const [labelWidth, setLabelWidth] = React.useState(0);
   const [hasAnimated, setHasAnimated] = React.useState(false);
 
-  const horizontalPadding = theme.spacing.md;
+  const horizontalPadding = theme.spacing.lg;
   const labelGap = theme.spacing.sm;
-  const minExpandedWidth = theme.spacing.xl * 4;
+  const minExpandedWidth = theme.spacing.sm * 4;
   const iconSize = theme.typography.sizes.lg;
 
   const expandedWidth = React.useMemo(
@@ -195,6 +195,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
+    
     },
     measureText: {
       fontSize: theme.typography.sizes.sm,
