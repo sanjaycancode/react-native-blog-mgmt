@@ -50,11 +50,10 @@ import type { Blog } from "@/types/blog";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import { env } from "@/lib/config/env";
+import { ThemedFAB } from "@/components/ThemedFAB";
 
 const PAD = 16;
 const SPRING = { damping: 18, stiffness: 260, mass: 0.7 };
-
-// ---- Helpers ---------------------------------------------------------------
 
 function getParam(value?: string | string[]) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -115,8 +114,6 @@ const STATUS_LABEL: Record<string, string> = {
   rejected: "Rejected",
 };
 
-// ---- Top bar: back, title that appears on scroll, reading progress ---------
-
 function TopIconButton({
   icon,
   label,
@@ -162,7 +159,6 @@ function TopBar({
 }) {
   const { colors, typography } = useTheme();
 
-  // The title fades in once the big headline has scrolled out of view.
   const titleStyle = useAnimatedStyle(() => {
     const end = titleEnd.value;
     if (end <= 0) return { opacity: 0 };
@@ -230,7 +226,6 @@ function TopBar({
   );
 }
 
-
 function LikeButton({
   liked,
   count,
@@ -292,7 +287,6 @@ function LikeButton({
   );
 }
 
-
 function DetailSkeleton() {
   const { colors, spacing } = useTheme();
   const pulse = useSharedValue(0.45);
@@ -340,8 +334,6 @@ function DetailSkeleton() {
     </Animated.View>
   );
 }
-
-// ---- Author avatar ---------------------------------------------------------
 
 function AuthorAvatar({
   uri,
@@ -394,8 +386,6 @@ function AuthorAvatar({
   );
 }
 
-// ---- Screen ----------------------------------------------------------------
-
 export default function BlogDetailPage() {
   const { slug: slugParam } = useLocalSearchParams<{
     slug?: string | string[];
@@ -420,8 +410,9 @@ export default function BlogDetailPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
-
-  // Scroll-driven values for the top bar.
+  const [articleFontSize, setArticleFontSize] = useState(16);
+  const [fontPanelOpen, setFontPanelOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const scrollY = useSharedValue(0);
   const contentH = useSharedValue(0);
   const viewH = useSharedValue(0);
@@ -440,6 +431,18 @@ export default function BlogDetailPage() {
     if (router.canGoBack()) router.back();
     else router.replace("/blog");
   }, [router]);
+
+  const decreaseFontSize = () => {
+    setArticleFontSize((size) => Math.max(12, size - 2));
+  };
+
+  const increaseFontSize = () => {
+    setArticleFontSize((size) => Math.min(28, size + 2));
+  };
+
+  const selectFontSize = (size: number) => {
+    setArticleFontSize(size);
+  };
 
   useEffect(() => {
     if (!slug) return;
@@ -467,7 +470,6 @@ export default function BlogDetailPage() {
       .catch((requestError: unknown) => {
         if (cancelled) return;
         const message = getErrorMessage(requestError);
-        // A failed refresh shouldn't wipe a story that's already on screen.
         if (loadedSlug.current === slug) showToast(message, "error");
         else setError(message);
       })
@@ -481,7 +483,7 @@ export default function BlogDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [slug, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, reloadKey]);
 
   useEffect(() => {
     setLiked(
@@ -498,38 +500,46 @@ export default function BlogDetailPage() {
   const isAuthor = Boolean(
     session?.user?.id && blog?.author?._id === session.user.id,
   );
-  const htmlTagsStyles = useMemo(
-    () => ({
+
+  const htmlTagsStyles = useMemo(() => {
+    const scale = articleFontSize / typography.sizes.base;
+
+    return {
       body: {
         color: colors.foreground,
-        fontSize: typography.sizes.base,
+        fontSize: articleFontSize,
         lineHeight: Math.round(
-          typography.sizes.base * typography.lineHeights.relaxed,
+          articleFontSize * typography.lineHeights.relaxed,
         ),
       },
-      p: { marginTop: 0, marginBottom: spacing.md },
+      p: {
+        marginTop: 0,
+        marginBottom: spacing.md,
+      },
       h1: {
         color: colors.foreground,
-        fontSize: typography.sizes["2xl"],
+        fontSize: Math.round(typography.sizes["2xl"] * scale),
         fontWeight: typography.weights.bold,
         marginTop: spacing.lg,
         marginBottom: spacing.sm,
       },
       h2: {
         color: colors.foreground,
-        fontSize: typography.sizes.xl,
+        fontSize: Math.round(typography.sizes.xl * scale),
         fontWeight: typography.weights.bold,
         marginTop: spacing.lg,
         marginBottom: spacing.sm,
       },
       h3: {
         color: colors.foreground,
-        fontSize: typography.sizes.lg,
+        fontSize: Math.round(typography.sizes.lg * scale),
         fontWeight: typography.weights.semibold,
         marginTop: spacing.md,
         marginBottom: spacing.xs,
       },
-      li: { marginBottom: spacing.xs },
+      li: {
+        marginBottom: spacing.xs,
+      },
       blockquote: {
         color: colors.mutedForeground,
         backgroundColor: colors.muted,
@@ -538,7 +548,10 @@ export default function BlogDetailPage() {
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm,
       },
-      a: { color: colors.primary, textDecorationLine: "underline" as const },
+      a: {
+        color: colors.primary,
+        textDecorationLine: "underline" as const,
+      },
       code: {
         color: colors.foreground,
         backgroundColor: colors.muted,
@@ -549,17 +562,17 @@ export default function BlogDetailPage() {
         backgroundColor: colors.foreground,
         padding: spacing.md,
       },
-      img: { borderRadius: radii.md },
-    }),
-    [colors, radii.md, spacing, typography],
-  );
+      img: {
+        borderRadius: radii.md,
+      },
+    };
+  }, [articleFontSize, colors, radii.md, spacing, typography]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     setReloadKey((key) => key + 1);
   }, []);
 
-  // Optimistic: the heart responds instantly and rolls back if the request fails.
   const handleLike = useCallback(async () => {
     if (!blog || isLiking) return;
     if (!session) {
@@ -703,7 +716,11 @@ export default function BlogDetailPage() {
       ) : (
         <>
           <Animated.ScrollView
-            onScroll={onScroll}
+          
+            onScroll={(event) => {
+              const offsetY = event.nativeEvent.contentOffset.y;
+              setIsScrolled(offsetY > 80);
+            }}
             scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: spacing.xl }}
@@ -717,7 +734,6 @@ export default function BlogDetailPage() {
             }
           >
             <View style={{ paddingHorizontal: PAD, paddingTop: spacing.md }}>
-              {/* Kicker: category, reading time, status (author only) */}
               <View style={styles.kicker}>
                 {!!blog.category?.title && (
                   <Text
@@ -775,7 +791,6 @@ export default function BlogDetailPage() {
                 )}
               </View>
 
-              {/* Headline. Its bottom edge tells the top bar when to show the title. */}
               <View
                 onLayout={(e) => {
                   titleEnd.value =
@@ -796,7 +811,6 @@ export default function BlogDetailPage() {
                 </Text>
               </View>
 
-              {/* Author */}
               <Pressable
                 onPress={openAuthor}
                 disabled={!blog.author?._id}
@@ -847,7 +861,6 @@ export default function BlogDetailPage() {
                 )}
               </Pressable>
 
-              {/* Cover: only when there is one */}
               {imageUri && !imageFailed ? (
                 <Image
                   source={{ uri: imageUri }}
@@ -864,7 +877,6 @@ export default function BlogDetailPage() {
                 />
               ) : null}
 
-              {/* Article */}
               <View style={{ marginTop: spacing.lg }}>
                 <RenderHTML
                   contentWidth={contentWidth}
@@ -876,7 +888,6 @@ export default function BlogDetailPage() {
                 />
               </View>
 
-              {/* Tags */}
               {blog.tags?.length ? (
                 <View style={[styles.tags, { marginTop: spacing.sm }]}>
                   {blog.tags.map((tag) => (
@@ -911,15 +922,10 @@ export default function BlogDetailPage() {
                 borderTopColor: colors.border,
               }}
             >
-              <BlogComments
-                key={blog._id}
-                blogId={blog._id}
-                alwaysOpen
-              />
+              <BlogComments key={blog._id} blogId={blog._id} alwaysOpen />
             </View>
           </Animated.ScrollView>
 
-          {/* Action bar */}
           <View
             style={[
               styles.actionBar,
@@ -948,10 +954,203 @@ export default function BlogDetailPage() {
               />
             </View>
           </View>
+          <ThemedFAB
+            label="Text size"
+            iconName="text"
+            isScrolled={isScrolled}
+            onPress={() => setFontPanelOpen(true)}
+            style={{
+              bottom: 100 + Math.max(insets.bottom, 8),
+            }}
+          />
+
+          <Modal
+            transparent
+            visible={fontPanelOpen}
+            animationType="slide"
+            onRequestClose={() => setFontPanelOpen(false)}
+          >
+            <View style={styles.fontSheetRoot}>
+              <Pressable
+                style={styles.fontBackdrop}
+                onPress={() => setFontPanelOpen(false)}
+                accessibilityLabel="Close text appearance panel"
+                accessibilityRole="button"
+              />
+
+              <View
+                style={[
+                  styles.fontSheet,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    borderTopLeftRadius: radii.lg,
+                    borderTopRightRadius: radii.lg,
+                    padding: spacing.lg,
+                    paddingBottom: Math.max(insets.bottom, spacing.lg),
+                  },
+                ]}
+              >
+                <View style={styles.fontSheetHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        color: colors.foreground,
+                        fontSize: typography.sizes.lg,
+                        fontWeight: typography.weights.bold,
+                      }}
+                    >
+                      Text appearance
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: colors.mutedForeground,
+                        fontSize: typography.sizes.sm,
+                        marginTop: spacing.xs,
+                      }}
+                    >
+                      Adjust the size of article text.
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    onPress={() => setFontPanelOpen(false)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Close text appearance"
+                    hitSlop={10}
+                    style={styles.fontCloseButton}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={24}
+                      color={colors.foreground}
+                    />
+                  </Pressable>
+                </View>
+
+                <View style={styles.fontSizeControls}>
+                  <Pressable
+                    onPress={decreaseFontSize}
+                    disabled={articleFontSize <= 12}
+                    accessibilityRole="button"
+                    accessibilityLabel="Decrease article font size"
+                    style={[
+                      styles.fontAdjustButton,
+                      { backgroundColor: colors.secondary },
+                    ]}
+                  >
+                    <Ionicons
+                      name="remove"
+                      size={22}
+                      color={
+                        articleFontSize <= 12
+                          ? colors.mutedForeground
+                          : colors.foreground
+                      }
+                    />
+                  </Pressable>
+
+                  <View style={{ alignItems: "center", flex: 1 }}>
+                    <Text
+                      style={{
+                        color: colors.foreground,
+                        fontSize: articleFontSize,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Aa
+                    </Text>
+                    <Text
+                      style={{
+                        color: colors.mutedForeground,
+                        fontSize: typography.sizes.xs,
+                        marginTop: 2,
+                      }}
+                    >
+                      {articleFontSize}px
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    onPress={increaseFontSize}
+                    disabled={articleFontSize >= 28}
+                    accessibilityRole="button"
+                    accessibilityLabel="Increase article font size"
+                    style={[
+                      styles.fontAdjustButton,
+                      { backgroundColor: colors.secondary },
+                    ]}
+                  >
+                    <Ionicons
+                      name="add"
+                      size={22}
+                      color={
+                        articleFontSize >= 28
+                          ? colors.mutedForeground
+                          : colors.foreground
+                      }
+                    />
+                  </Pressable>
+                </View>
+
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontWeight: "600",
+                    marginBottom: spacing.sm,
+                  }}
+                >
+                  Text size
+                </Text>
+
+                <View style={styles.fontPresets}>
+                  {[
+                    { label: "Small", size: 14 },
+                    { label: "Medium", size: 16 },
+                    { label: "Large", size: 20 },
+                  ].map((option) => {
+                    const selected = articleFontSize === option.size;
+
+                    return (
+                      <Pressable
+                        key={option.label}
+                        onPress={() => selectFontSize(option.size)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${option.label} text size`}
+                        accessibilityState={{ selected }}
+                        style={[
+                          styles.fontPreset,
+                          {
+                            backgroundColor: selected
+                              ? colors.primary
+                              : colors.background,
+                            borderColor: selected
+                              ? colors.primary
+                              : colors.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            color: selected
+                              ? colors.primaryForeground
+                              : colors.foreground,
+                            fontWeight: selected ? "600" : "400",
+                          }}
+                        >
+                          {option.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+          </Modal>
         </>
       )}
 
-      {/* Delete confirmation */}
       <Modal
         animationType="fade"
         transparent
@@ -1029,7 +1228,6 @@ export default function BlogDetailPage() {
 }
 
 const styles = StyleSheet.create({
-  // Top bar
   topRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1071,7 +1269,6 @@ const styles = StyleSheet.create({
     height: 2,
   },
 
-  // Header block
   kicker: {
     flexDirection: "row",
     alignItems: "center",
@@ -1114,7 +1311,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
 
-  // Action bar
   actionBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -1137,7 +1333,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
 
-  // States
   state: {
     flex: 1,
     alignItems: "center",
@@ -1167,7 +1362,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
-  // Modal
   modalRoot: {
     flex: 1,
     justifyContent: "center",
@@ -1177,5 +1371,56 @@ const styles = StyleSheet.create({
   },
   dialogActions: {
     flexDirection: "row",
+  },
+
+  fontSheetRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  fontBackdrop: {
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+  },
+  fontSheet: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 20,
+  },
+  fontSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  fontCloseButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fontSizeControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+    paddingVertical: 4,
+  },
+  fontAdjustButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fontPresets: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  fontPreset: {
+    flex: 1,
+    minHeight: 44,
+    borderWidth: 1,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 10,
   },
 });
