@@ -352,14 +352,14 @@ export default function CreateBlogPage() {
               label="Title"
               required
               error={fieldErrors.title}
-              hint={`${title.length}/120 characters`}
+              hint={`${title.length}/90 characters`}
             >
               <ThemedTextInput
                 accessibilityLabel="Blog title"
                 value={title}
                 onChangeText={(value) => updateField("title", value, setTitle)}
                 placeholder="Enter your blog title"
-                maxLength={120}
+                maxLength={90}
                 editable={!submitting}
                 returnKeyType="next"
               />
