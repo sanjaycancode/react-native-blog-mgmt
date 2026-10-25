@@ -2,7 +2,7 @@
   "expo": {
     "name": "NepalCanBlog",
     "slug": "nepalcanblog",
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/images/ncblogo.png",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "nepalcanblog",
@@ -62,7 +62,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo.png",
+          "image": "./assets/images/splashscreen.png",
           "imageWidth": 160,
           "backgroundColor": "#F9F9FF"
         }
