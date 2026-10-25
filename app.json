@@ -40,7 +40,7 @@
         }
       ],
       "package": "com.nepalcan.blog",
-      "softwareKeyboardLayoutMode": "resize",
+      "softwareKeyboardLayoutMode": "pan",
       "androidStatusBar": {
         "translucent": false
       }
