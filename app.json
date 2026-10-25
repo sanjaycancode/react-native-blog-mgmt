@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo.png",
+        "foregroundImage": "./assets/images/ncblogo.png",
         "backgroundColor": "#EDE9FE"
       },
       "intentFilters": [
@@ -63,7 +63,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splashscreen.png",
-          "imageWidth": 160,
+          "resizeMode": "cover",
           "backgroundColor": "#F9F9FF"
         }
       ]
