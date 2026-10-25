@@ -1,4 +1,3 @@
-import type { Ionicons } from "@expo/vector-icons";
 import type { ImageSourcePropType } from "react-native";
 import type Animated from "react-native-reanimated";
 import type {
@@ -7,8 +6,8 @@ import type {
   useAnimatedScrollHandler,
 } from "react-native-reanimated";
 
-/** Any valid Ionicons glyph name. */
-export type IconName = keyof typeof Ionicons.glyphMap;
+/** Which mini app screen a slide shows. Scenes live in components/Onboarding/scenes. */
+export type OnboardingVisual = "stories" | "editor" | "insights";
 
 /** One page of the carousel. Pure data, no UI concerns. */
 export interface OnboardingSlide {
@@ -20,11 +19,9 @@ export interface OnboardingSlide {
   /** Second part of the headline, highlighted with the primary color. */
   readonly accent: string;
   readonly description: string;
-  /** Icon shown on the central tile of the built-in vector illustration. */
-  readonly icon: IconName;
-  /** Three icons that float around the illustration at different depths. */
-  readonly floatingIcons: readonly [IconName, IconName, IconName];
-  /** Optional artwork. When set it replaces the central icon tile. */
+  /** The in-app preview drawn above the text. */
+  readonly visual: OnboardingVisual;
+  /** Optional artwork, e.g. a real screenshot. When set it replaces the scene. */
   readonly image?: ImageSourcePropType;
 }
 

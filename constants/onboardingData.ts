@@ -1,39 +1,36 @@
 import type { OnboardingSlide } from "@/types/onboarding";
 
-/** Sample slides. Edit the copy and icons, or add `image` for custom artwork. */
+/**
+ * Onboarding copy. Each slide's `visual` picks the mini app preview shown
+ * above the text. Sample stories and names inside the previews live in
+ * components/Onboarding/scenes.
+ */
 export const ONBOARDING_SLIDES: readonly OnboardingSlide[] = [
   {
-    id: "discover",
-    tag: "Discover",
-    title: "Stories worth",
-    accent: "your time.",
+    id: "read",
+    tag: "Read",
+    title: "Nepal, told by",
+    accent: "Nepalis.",
     description:
-      "Read thoughtful writing from Nepali creators, thinkers and builders, all in one place.",
-    icon: "book-outline",
-    floatingIcons: ["bookmark-outline", "heart-outline", "search-outline"],
+      "Treks, tech, food and everyday life, written by people who live it. Save the ones you love and read them later.",
+    visual: "stories",
   },
   {
-    id: "create",
-    tag: "Create",
-    title: "Write in",
-    accent: "your own voice.",
+    id: "write",
+    tag: "Write",
+    title: "Write now,",
+    accent: "publish later.",
     description:
-      "A clean editor, drafts that stay private, and one tap to publish when you're ready.",
-    icon: "create-outline",
-    floatingIcons: ["image-outline", "text-outline", "sparkles-outline"],
+      "Drafts stay private until you tap publish, so nothing goes out half-finished. Add a cover, pick a topic, and you're live.",
+    visual: "editor",
   },
   {
     id: "grow",
     tag: "Grow",
-    title: "Find your",
-    accent: "audience.",
+    title: "See what",
+    accent: "readers love.",
     description:
-      "See what resonates with built-in insights, and build a profile readers want to follow.",
-    icon: "people-outline",
-    floatingIcons: [
-      "stats-chart-outline",
-      "chatbubble-ellipses-outline",
-      "trending-up-outline",
-    ],
+      "Insights shows your views, likes and best posts. Add a bio and your links so readers can find you elsewhere.",
+    visual: "insights",
   },
 ];
