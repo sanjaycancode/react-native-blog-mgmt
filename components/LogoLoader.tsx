@@ -10,7 +10,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import logoImg from "@/assets/images/logo.png";
+const logoImg = require("../assets/images/logo.png");
 
 type Props = {
   size?: number;
@@ -62,18 +62,21 @@ export default function LogoLoader({ size = 48 }: Props) {
 
   const logoStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [
-      { rotate: `${rotation.value}deg` },
-      { scale: scale.value },
-    ],
+    transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
   }));
   const motionBlurStyle = useAnimatedStyle(() => ({
     opacity: opacity.value * 0.12,
-    transform: [{ rotate: `${rotation.value - 10}deg` }, { scale: scale.value * 1.04 }],
+    transform: [
+      { rotate: `${rotation.value - 10}deg` },
+      { scale: scale.value * 1.04 },
+    ],
   }));
   const motionBlurFarStyle = useAnimatedStyle(() => ({
     opacity: opacity.value * 0.06,
-    transform: [{ rotate: `${rotation.value - 20}deg` }, { scale: scale.value * 1.08 }],
+    transform: [
+      { rotate: `${rotation.value - 20}deg` },
+      { scale: scale.value * 1.08 },
+    ],
   }));
 
   return (

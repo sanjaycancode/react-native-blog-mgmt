@@ -29,13 +29,13 @@ import { useTheme } from "@/constants/theme";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import type { Blog, Category } from "@/types";
+import LogoLoader from "@/components/LogoLoader";
 
 const PAGE_SIZE = 7;
 
 function getParam(value?: string | string[]) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
-
 
 function CategoryChips({
   categories,
@@ -78,7 +78,9 @@ function CategoryChips({
             <ThemedText
               variant="caption"
               style={{
-                color: isSelected ? colors.primaryForeground : colors.foreground,
+                color: isSelected
+                  ? colors.primaryForeground
+                  : colors.foreground,
                 fontWeight: isSelected
                   ? typography.weights.semibold
                   : typography.weights.regular,
@@ -92,7 +94,6 @@ function CategoryChips({
     </ScrollView>
   );
 }
-
 
 function BlogCardSkeleton() {
   const { colors, spacing, radii } = useTheme();
@@ -157,7 +158,6 @@ function BlogCardSkeleton() {
     </View>
   );
 }
-
 
 export default function BlogsPage() {
   const { colors, spacing, radii, typography } = useTheme();
@@ -336,36 +336,38 @@ export default function BlogsPage() {
         },
       ]}
     >
-<View style={{flexDirection:"row",gap:spacing.sm}}>
-    <Pressable
-  accessibilityRole="search"
-  accessibilityLabel="Search blogs and people"
-  onPress={() => router.push("/search" as Href)}
-  style={[
-    styles.searchBar,
-    {
-      backgroundColor: colors.card,
-      borderColor: colors.border,
-      borderRadius: radii.md,
-      paddingHorizontal: spacing.md,
-      gap: spacing.sm,
-      flex:1
-    },
-  ]}
->
-  <Ionicons name="search-outline" size={18} color={colors.mutedForeground} />
-  <ThemedText variant="bodySmall" semantic="muted">
-    Search blogs and people
-  </ThemedText>
-</Pressable>
-</View>
+      <View style={{ flexDirection: "row", gap: spacing.sm }}>
+        <Pressable
+          accessibilityRole="search"
+          accessibilityLabel="Search blogs and people"
+          onPress={() => router.push("/search" as Href)}
+          style={[
+            styles.searchBar,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderRadius: radii.md,
+              paddingHorizontal: spacing.md,
+              gap: spacing.sm,
+              flex: 1,
+            },
+          ]}
+        >
+          <Ionicons
+            name="search-outline"
+            size={18}
+            color={colors.mutedForeground}
+          />
+          <ThemedText variant="bodySmall" semantic="muted">
+            Search blogs and people
+          </ThemedText>
+        </Pressable>
+      </View>
       <CategoryChips
         categories={categories}
         selected={category}
         onSelect={(title) => updateFilters({ category: title })}
       />
-
-     
     </View>
   );
 
@@ -440,10 +442,9 @@ export default function BlogsPage() {
         }
         ListFooterComponent={
           loadingMore ? (
-            <ActivityIndicator
-              color={colors.primary}
-              style={{ paddingVertical: spacing.lg }}
-            />
+          <View style={{flex:1, alignItems:"center"}}>
+            <LogoLoader />
+            </View>
           ) : fetchMoreError ? (
             <View style={styles.loadMoreError}>
               <ThemedText variant="bodySmall" semantic="muted">
@@ -464,7 +465,7 @@ export default function BlogsPage() {
             >
               You’re all caught up.
             </ThemedText>
-          ) : null
+          ) : undefined
         }
       />
     </ThemedSafeAreaView>
@@ -525,7 +526,7 @@ const styles = StyleSheet.create({
   titleText: {
     flex: 1,
   },
-chip: {
+  chip: {
     height: 25,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
@@ -586,10 +587,9 @@ chip: {
     textAlign: "center",
   },
   searchBar: {
-  height: 35,
-  flexDirection: "row",
-  alignItems: "center",
-  borderWidth: 1,
-
-},
+    height: 35,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+  },
 });

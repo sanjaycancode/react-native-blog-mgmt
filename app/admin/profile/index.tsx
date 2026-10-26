@@ -31,6 +31,7 @@ import { useToast } from "@/context/ToastContext";
 
 import { getErrorMessage } from "@/utils/errorMessage";
 import { imgSrc } from "@/utils/getImgSrc";
+import LogoLoader from "@/components/LogoLoader";
 
 const DANGER_COLOR = "#DC2626";
 const BANNER_HEIGHT = 66;
@@ -194,13 +195,7 @@ export default function AdminProfilePage() {
       >
         {loading ? (
           <View style={[styles.centered, styles.loading, { gap: spacing.md }]}>
-            <ActivityIndicator color={colors.primary} />
-            <Text
-              variant="bodyMedium"
-              style={{ color: colors.mutedForeground }}
-            >
-              Loading profile...
-            </Text>
+            <LogoLoader/>
           </View>
         ) : error ? (
           <Card mode="outlined" style={cardStyle}>

@@ -35,6 +35,7 @@ import { useToast } from "@/context/ToastContext";
 import type { AdminUser } from "@/types/admin";
 
 import { getErrorMessage } from "@/utils/errorMessage";
+import LogoLoader from "@/components/LogoLoader";
 
 type UserRole = "" | "user" | "admin";
 
@@ -241,13 +242,9 @@ export default function AdminUsersPage() {
           </Button>
         </View>
 
-        {/* Content states */}
         {loading ? (
-          <View style={[styles.loading, { gap: spacing.md }]}>
-            <ActivityIndicator color={colors.primary} />
-            <Text variant="bodyMedium" style={{ color: colors.mutedForeground }}>
-              Loading users...
-            </Text>
+          <View style={[styles.loading, { gap: spacing.md ,paddingTop:200}]}>
+            <LogoLoader/>
           </View>
         ) : error ? (
           <Card mode="outlined" style={cardStyle}>

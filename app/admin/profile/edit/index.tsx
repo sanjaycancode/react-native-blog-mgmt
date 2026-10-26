@@ -32,6 +32,7 @@ import { useToast } from "@/context/ToastContext";
 
 import { getErrorMessage } from "@/utils/errorMessage";
 import { imgSrc } from "@/utils/getImgSrc";
+import LogoLoader from "@/components/LogoLoader";
 
 const BIO_MAX_LENGTH = 250;
 
@@ -262,14 +263,8 @@ export default function AdminEditProfilePage() {
           </View>
 
           {loading ? (
-            <View style={[styles.centered, styles.loading, { gap: spacing.md }]}>
-              <ActivityIndicator color={colors.primary} />
-              <Text
-                variant="bodyMedium"
-                style={{ color: colors.mutedForeground }}
-              >
-                Loading profile...
-              </Text>
+            <View style={[styles.centered, styles.loading, { gap: spacing.md,paddingTop:200 }]}>
+             <LogoLoader/>
             </View>
           ) : error && !profile ? (
             <Card

@@ -35,6 +35,7 @@ import type { Category } from "@/types/category";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import { env } from "@/lib/config/env";
+import LogoLoader from "@/components/LogoLoader";
 
 type BlogStatus = "draft" | "submitted";
 type FieldName = "title" | "description" | "category";
@@ -254,9 +255,7 @@ export default function EditBlogPage() {
     return (
       <ThemedSafeAreaView edges={["top", "left", "right"]}>
         <View style={[styles.centered, { padding: spacing.xl }]}>
-          <ThemedText variant="bodySmall" semantic="muted">
-            {isInitializing ? "Checking your account..." : "Loading blog..."}
-          </ThemedText>
+         <LogoLoader/>
         </View>
       </ThemedSafeAreaView>
     );
