@@ -332,7 +332,6 @@ export default function PublicProfileScreen() {
     );
   }
 
-  // ---- Ready --------------------------------------------------------------
 
   return (
     <SafeAreaView
@@ -363,7 +362,6 @@ export default function PublicProfileScreen() {
           onOpenLink={(value) => void openExternal(value)}
         />
 
-        {/* A single "tab": visitors only get Posts */}
         <View
           style={[styles.postsTab, { borderBottomColor: colors.border }]}
           accessibilityRole="tablist"

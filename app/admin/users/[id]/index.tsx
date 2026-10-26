@@ -37,6 +37,7 @@ import type { AdminBlog, AdminUser } from "@/types/admin";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 import { env } from "@/lib/config/env";
+import LogoLoader from "@/components/LogoLoader";
 
 const BLOG_STATUS_FILTERS = [
   { label: "All", value: "all" },
@@ -299,11 +300,8 @@ export default function AdminUserDetailPage() {
         </Button>
 
         {loading ? (
-          <View style={[styles.loading, { gap: spacing.md }]}>
-            <ActivityIndicator color={colors.primary} />
-            <Text variant="bodyMedium" style={{ color: colors.mutedForeground }}>
-              Loading user...
-            </Text>
+          <View style={[styles.loading, { gap: spacing.md , paddingTop:200}]}>
+            <LogoLoader/>
           </View>
         ) : error ? (
           <Card mode="outlined" style={cardStyle}>

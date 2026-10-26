@@ -70,7 +70,6 @@ export default function ProfileScreen() {
   const submitted = useMemo(() => byStatus(blogs, "submitted"), [blogs]);
   const rejected = useMemo(() => byStatus(blogs, "rejected"), [blogs]);
 
-  // savedBlogs may hold populated blog objects or plain ids; only objects render.
   const saved = useMemo(
     () =>
       (
@@ -163,7 +162,6 @@ export default function ProfileScreen() {
           Alert.alert(blog.title, undefined, actions);
         };
 
-  // ---- Render -------------------------------------------------------------
 
   if (isLoading) {
     return (
@@ -189,7 +187,6 @@ export default function ProfileScreen() {
     >
       <ScrollView
         style={{ flex: 1 }}
-        // Index 1 = the tab bar, so it pins to the top while the grid scrolls.
         stickyHeaderIndices={[1]}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}

@@ -34,6 +34,7 @@ import type { Blog } from "@/types/blog";
 import type { Category } from "@/types/category";
 
 import { getErrorMessage } from "@/utils/errorMessage";
+import LogoLoader from "@/components/LogoLoader";
 
 const BLOG_LIMIT = 100;
 const STATUSES = ["published", "unpublished", "submitted", "rejected"] as const;
@@ -172,16 +173,12 @@ export default function AdminOverview() {
       <SafeAreaView
         edges={["top", "left", "right"]}
         style={[styles.screen, { backgroundColor: colors.background }]}
+
       >
-        <View
-          style={[
-            styles.loading,
-            { gap: spacing.md, paddingVertical: spacing["3xl"] },
-          ]}
-        >
-          <ActivityIndicator />
+        <LogoLoader/>
           <Text variant="bodyMedium">Checking administrator access...</Text>
-        </View>
+
+        
       </SafeAreaView>
     );
   }
@@ -239,15 +236,20 @@ export default function AdminOverview() {
         ) : null}
 
         {loading ? (
-          <View
-            style={[
-              styles.loading,
-              { gap: spacing.md, paddingVertical: spacing["3xl"] },
-            ]}
-          >
-            <ActivityIndicator />
-            <Text variant="bodyMedium">Loading dashboard data...</Text>
-          </View>
+          // <View
+          //   style={[
+          //     styles.loading,
+          //     { gap: spacing.md, paddingVertical: spacing["3xl"] },
+          //   ]}
+          // >
+          //   <LogoLoader/>
+          // </View>
+          <SafeAreaView
+                  edges={["top", "left", "right"]}
+                  style={[styles.centered, {paddingTop:200, backgroundColor: colors.background }]}
+                >
+                  <LogoLoader />
+                </SafeAreaView>
         ) : (
           <>
             <View style={[styles.statsGrid, { gap: spacing.sm }]}>
@@ -770,6 +772,11 @@ function StatusBarChart({ data }: { data: BarEntry[] }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  centered:{
+    flex:1,
+    justifyContent:"center",
+    alignItems:"center"
   },
   statsGrid: {
     flexDirection: "row",

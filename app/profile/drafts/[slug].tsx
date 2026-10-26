@@ -12,6 +12,7 @@ import {
 } from "react-native";
 
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,6 +28,7 @@ import { type Blog } from "@/types";
 import { imgSrc } from "@/utils/getImgSrc";
 
 import { getDraftTheme } from "./appTheme";
+import LogoLoader from "@/components/LogoLoader";
 
 // The backend populates author + category on this endpoint.
 type DraftDetail = Omit<Blog, "author" | "category"> & {
@@ -68,7 +70,6 @@ function toParagraphs(raw?: string): string[] {
     .filter(Boolean);
 }
 
-// ── screen ─────────────────────────────────────────────────────────────────
 export default function DraftDetailScreen({
   forcedStatus,
 }: {
@@ -197,9 +198,12 @@ export default function DraftDetailScreen({
       <View style={s.screen}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
         {Header}
-        <View style={[s.center, { flex: 1 }]}>
-          <ActivityIndicator color={T.primary} />
-        </View>
+        <SafeAreaView
+                edges={["top", "left", "right"]}
+                style={[s.centered, { backgroundColor: colors.background }]}
+              >
+                <LogoLoader />
+              </SafeAreaView>
       </View>
     );
   }
@@ -355,12 +359,11 @@ export default function DraftDetailScreen({
   );
 }
 
-// ── styles ─────────────────────────────────────────────────────────────────
 const createStyles = (T: ReturnType<typeof getDraftTheme>) =>
   StyleSheet.create({
   screen: { flex: 1, backgroundColor: T.bg },
   center: { alignItems: "center", justifyContent: "center" },
-
+    centered:{flex:1, alignItems:"center", justifyContent:"center"},
   header: {
     flexDirection: "row",
     alignItems: "center",

@@ -19,6 +19,8 @@ import type { ProfileConnectionUser } from "@/api/services/profile";
 import { useTheme } from "@/constants/theme";
 
 import ConnectionRow from "./connectionRow";
+import { SafeAreaView } from "react-native-safe-area-context";
+import LogoLoader from "../LogoLoader";
 
 type Props = {
   visible: boolean;
@@ -80,10 +82,15 @@ export default function ProfileConnectionsModal({
   const renderBody = () => {
     if (isLoading) {
       return (
-        <ActivityIndicator
-          color={colors.primary}
-          style={{ marginVertical: spacing.xl }}
-        />
+        <SafeAreaView
+        edges={["top", "left", "right"]}
+        style={[styles.centered, { backgroundColor: colors.background }]} >
+          <LogoLoader/>
+        </SafeAreaView>
+        // <ActivityIndicator
+        //   color={colors.primary}
+        //   style={{ marginVertical: spacing.xl }}
+        // />
       );
     }
 
@@ -206,6 +213,11 @@ const styles = StyleSheet.create({
   },
   emptyList: {
     flexGrow: 1,
+    justifyContent: "center",
+  },
+   centered: {
+    flex: 1,
+    alignItems: "center",
     justifyContent: "center",
   },
 });

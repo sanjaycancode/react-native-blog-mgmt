@@ -19,6 +19,7 @@ import { useRouter } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { profileApi, type ProfileData } from "@/api/services/profile";
 
@@ -26,6 +27,7 @@ import { useAuth } from "@/context/AuthContext";
 
 import { getErrorMessage } from "@/utils/errorMessage";
 import { imgSrc } from "@/utils/getImgSrc";
+import LogoLoader from "@/components/LogoLoader";
 
 // Tokens taken from the main app theme (cream background, #e63946 primary).
 // If your RN project already has a theme file, replace this object with an import from it.
@@ -135,7 +137,6 @@ export default function EditProfileScreen() {
   const [saveError, setSaveError] = useState("");
   const [touched, setTouched] = useState(false);
 
-  // Auth guard: never redirect while the session is still being restored.
   useEffect(() => {
     if (!isInitializing && !isAuthenticated) router.replace("/login");
   }, [isInitializing, isAuthenticated, router]);
@@ -292,11 +293,11 @@ export default function EditProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
       >
-        {isLoading && (
-          <View style={[s.center, { paddingTop: 120 }]}>
-            <ActivityIndicator color={T.primary} />
-          </View>
-        )}
+      {isLoading && (
+        <SafeAreaView edges={["top", "left", "right"]} style={[s.centered, {paddingTop:200}]}>
+          <LogoLoader/>
+        </SafeAreaView>
+      )}
 
         {!isLoading && loadError ? (
           <View
@@ -420,7 +421,11 @@ export default function EditProfileScreen() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: T.bg },
   center: { alignItems: "center", justifyContent: "center" },
-
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
