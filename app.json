@@ -2,7 +2,7 @@
   "expo": {
     "name": "NepalCanBlog",
     "slug": "nepalcanblog",
-    "icon": "./assets/images/ncblogo.png",
+    "icon": "./assets/images/ncb.png",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "nepalcanblog",
@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/ncblogo.png",
+        "foregroundImage": "./assets/images/ncb.png",
         "backgroundColor": "#EDE9FE"
       },
       "intentFilters": [
@@ -62,8 +62,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splashscreen.png",
-          "resizeMode": "cover",
+          "image": "./assets/images/logo.png",
+          "imageWidth": 160,
           "backgroundColor": "#F9F9FF"
         }
       ]

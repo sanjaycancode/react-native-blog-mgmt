@@ -14,6 +14,8 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useState } from "react";
+import { Image, StyleSheet } from "react-native";
 
 import Navbar from "@/components/NavBar";
 
@@ -83,6 +85,8 @@ function PaperThemeProvider({ children }: { children: ReactNode }) {
   return <PaperProvider theme={theme}>{children}</PaperProvider>;
 }
 
+const MIN_SPLASH_MS = 1200; // minimum time the full-screen image stays visible
+
 function RootNavigator() {
   const { isDark } = useTheme();
   const { isInitializing, session } = useAuth();
@@ -91,10 +95,15 @@ function RootNavigator() {
   const router = useRouter();
   const navigationState = useRootNavigationState();
 
+  const [minTimePassed, setMinTimePassed] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMinTimePassed(true), MIN_SPLASH_MS);
+    return () => clearTimeout(t);
+  }, []);
+
   const onOnboarding = pathname === "/onboarding";
 
-  // Wait until we know the auth state, the saved flag, and that the navigator
-  // exists. Signed-in users never see onboarding, even on a fresh install.
   const ready = !isInitializing && onboardingReady && !!navigationState?.key;
   const needsOnboarding = ready && !hasSeenOnboarding && !session;
 
@@ -104,21 +113,19 @@ function RootNavigator() {
     else if (!needsOnboarding && onOnboarding) router.replace("/");
   }, [ready, needsOnboarding, onOnboarding, router]);
 
-  // A signed-in user counts as having seen it, so logging out later doesn't
-  // suddenly drop them into onboarding.
   useEffect(() => {
     if (ready && session && !hasSeenOnboarding) {
       void markOnboardingSeen().catch(() => undefined);
     }
   }, [ready, session, hasSeenOnboarding]);
 
-  // Keep the splash up until we're on the right screen, so a first-time user
-  // never sees a flash of the home screen before onboarding appears.
   const settled = ready && (needsOnboarding ? onOnboarding : !onOnboarding);
 
-  useEffect(() => {
-    if (settled) void SplashScreen.hideAsync().catch(() => undefined);
-  }, [settled]);
+  // The overlay stays until the right screen is ready AND the minimum time passed.
+  const showSplashOverlay = !(settled && minTimePassed);
+
+  // NOTE: the old `useEffect(() => { if (settled) SplashScreen.hideAsync() })`
+  // is removed. The native splash now hides when the overlay image loads.
 
   const hideNavbar =
     pathname === "/login" ||
@@ -139,7 +146,32 @@ function RootNavigator() {
           />
         </Stack>
         {!hideNavbar && <Navbar />}
+
+        {showSplashOverlay && (
+          <View style={[StyleSheet.absoluteFill, styles.splashOverlay]}>
+            <Image
+              source={require("../assets/images/ncbsplash.png")}
+              style={styles.splashImage}
+              resizeMode="cover"
+              onLoadEnd={() =>
+                void SplashScreen.hideAsync().catch(() => undefined)
+              }
+            />
+          </View>
+        )}
       </View>
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  splashOverlay: {
+    zIndex: 999,
+    elevation: 999, // Android needs elevation to stay above other views
+    backgroundColor: "#F9F9FF", // same as your native splash color
+  },
+  splashImage: {
+    width: "100%",
+    height: "100%",
+  },
+});
