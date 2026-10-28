@@ -51,6 +51,7 @@ import { getErrorMessage } from "@/utils/errorMessage";
 
 import { env } from "@/lib/config/env";
 import { ThemedFAB } from "@/components/ThemedFAB";
+import { scheduleOnRN } from "react-native-worklets";
 
 const PAD = 16;
 const SPRING = { damping: 18, stiffness: 260, mass: 0.7 };
@@ -417,10 +418,21 @@ export default function BlogDetailPage() {
   const contentH = useSharedValue(0);
   const viewH = useSharedValue(0);
   const titleEnd = useSharedValue(0);
+  const updateIsScrolled = useCallback((value: boolean) => {
+    setIsScrolled(value);
+  }, []);
+
   const onScroll = useAnimatedScrollHandler((e) => {
+    const prevY = scrollY.value;
     scrollY.value = e.contentOffset.y;
     contentH.value = e.contentSize.height;
     viewH.value = e.layoutMeasurement.height;
+
+    const wasScrolled = prevY > 80;
+    const nowScrolled = e.contentOffset.y > 80;
+    if (wasScrolled !== nowScrolled) {
+      scheduleOnRN(updateIsScrolled, nowScrolled);
+    }
   });
 
   // Remembers which story is on screen so pull-to-refresh updates it in place
@@ -716,11 +728,7 @@ export default function BlogDetailPage() {
       ) : (
         <>
           <Animated.ScrollView
-          
-            onScroll={(event) => {
-              const offsetY = event.nativeEvent.contentOffset.y;
-              setIsScrolled(offsetY > 80);
-            }}
+            onScroll={onScroll}
             scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: spacing.xl }}
